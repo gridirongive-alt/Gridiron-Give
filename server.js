@@ -855,6 +855,7 @@ app.get("/api/search/teams", (req, res) => {
     .all(`%${q}%`);
   return res.json(rows);
 });
+
 app.get("/api/public/teams", (_req, res) => {
   const rows = db
     .prepare(
@@ -865,6 +866,7 @@ app.get("/api/public/teams", (_req, res) => {
     )
     .all();
   return res.json(rows);
+});
 
 app.get("/api/public/players/:publicId", (req, res) => {
   const player = db
