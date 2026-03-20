@@ -129,8 +129,7 @@ async function loadFeaturedPlayer() {
   if (!featuredCard) return;
   let players = [];
   try {
-    const table = await apiRequest(`/api/admin/table/teams?limit=40`);
-    const teams = Array.isArray(table?.rows) ? table.rows : [];
+    const teams = await apiRequest(`/api/public/teams`);
     const teamPayloads = await Promise.all(
       teams.map((team) => apiRequest(`/api/public/teams/${encodeURIComponent(team.id)}`).catch(() => null))
     );
