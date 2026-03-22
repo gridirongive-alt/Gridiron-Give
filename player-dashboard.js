@@ -458,8 +458,26 @@ playerImageInput?.addEventListener("change", async () => {
     });
 });
 
-payoutsButton?.addEventListener("click", () => {
-  showAction("Stripe onboarding will be connected here next. This MVP keeps the button and flow in place.");
+payoutsButton?.addEventListener("click", async () => {
+  const current = refreshPlayer();
+  if (!current) {
+    showAction("Player session is missing.", true);
+    return;
+  }
+  try {
+    const data = await apiRequest("/api/stripe/onboard-player", {
+      method: "POST",
+      body: JSON.stringify({
+        playerId: current.id,
+      }),
+    });
+    if (!data?.url) {
+      throw new Error("Stripe onboarding URL was not returned.");
+    }
+    window.location.assign(data.url);
+  } catch (error) {
+    showAction(error.message || "Could not start Stripe onboarding.", true);
+  }
 });
 
 logoutButton?.addEventListener("click", () => {
