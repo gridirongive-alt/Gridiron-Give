@@ -180,7 +180,12 @@ function compactWhitespace(value) {
   return String(value || "").replace(/\s+/gu, "");
 }
 
-const appBaseUrl = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
+function trimTrailingSlash(value) {
+  return String(value || "").replace(/\/+$/u, "");
+}
+
+const appBaseUrl = trimTrailingSlash(process.env.APP_BASE_URL || `http://localhost:${PORT}`);
+const publicSiteUrl = `${appBaseUrl}/`;
 const gmailUser = process.env.GMAIL_USER || "";
 const gmailAppPasswordRaw = process.env.GMAIL_APP_PASSWORD || "";
 const gmailAppPassword = compactWhitespace(gmailAppPasswordRaw);
@@ -223,7 +228,7 @@ async function sendRecoveryEmail({ to, recoveryKeyValue, role }) {
 }
 
 async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId }) {
-  const setupLink = `${appBaseUrl}/index.html`;
+  const setupLink = publicSiteUrl;
   const html = `
     <h2>Welcome to Gridiron Give</h2>
     <p>Your coach has added you to the <strong>${teamName}</strong> roster.</p>
@@ -256,7 +261,7 @@ async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId }
 }
 
 async function sendCoachWelcomeEmail({ to, coachName, teamName }) {
-  const setupLink = `${appBaseUrl}/coach-dashboard.html`;
+  const setupLink = publicSiteUrl;
   const html = `
     <h2>Welcome to Gridiron Give, ${coachName}</h2>
     <p>Your team account for <strong>${teamName}</strong> is ready.</p>
