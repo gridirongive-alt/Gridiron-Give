@@ -51,34 +51,45 @@ body {
   background: #11141a;
 }
 
-.intro-logo,
-.intro-spinner {
+.intro-logo {
   transform: translateY(8px) scale(0.98);
   opacity: 0;
   transition: transform 420ms ease, opacity 420ms ease;
 }
 
-.intro-overlay.is-ready .intro-logo,
-.intro-overlay.is-ready .intro-spinner {
+.intro-spinner {
+  opacity: 0;
+  transition: opacity 420ms ease;
+}
+
+.intro-overlay.is-ready .intro-logo {
   transform: translateY(0) scale(1);
   opacity: 1;
 }
 
+.intro-overlay.is-ready .intro-spinner {
+  opacity: 1;
+}
+
 .intro-logo {
-  width: min(960px, 92vw);
+  width: min(760px, 84vw);
   height: auto;
-  max-height: 72vh;
+  max-height: 60vh;
   object-fit: contain;
 }
 
 .intro-spinner {
-  width: 26px;
-  height: 26px;
+  width: 42px;
+  height: 42px;
   margin: 0 auto;
-  border: 3px solid rgba(255, 255, 255, 0.28);
+  display: block;
+  border: 4px solid rgba(255, 255, 255, 0.18);
   border-top-color: #ffffff;
+  border-right-color: rgba(255, 255, 255, 0.72);
   border-radius: 999px;
-  animation: spin 0.4s linear infinite;
+  animation: spin 0.7s linear infinite;
+  will-change: transform;
+  animation-play-state: running;
 }
 
 .bg-shape {
