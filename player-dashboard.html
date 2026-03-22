@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Player Dashboard | Gridiron Give</title>
+    <title>Player Profile | Gridiron Give</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -27,95 +27,103 @@
         <span class="logo-text">Gridiron Give</span>
       </a>
       <nav class="header-actions">
-        <button class="btn btn-primary" type="button" id="publish-toggle">Publish</button>
+        <a class="btn btn-ghost" href="/index.html">Back to Search</a>
       </nav>
     </header>
 
     <main class="dashboard-main">
       <section class="card player-top">
         <div class="player-top-main">
-          <h1 class="dashboard-title" id="player-name-heading">Player Dashboard</h1>
-          <p class="dashboard-copy" id="player-team-copy"></p>
+          <p class="eyebrow">Donor View</p>
+          <h1 class="dashboard-title" id="donor-name-heading">Player Profile</h1>
+          <p class="dashboard-copy" id="donor-team-copy"></p>
         </div>
         <div class="player-top-center">
-        <button class="btn btn-money-soft" type="button" id="setup-payouts">Set Up Payouts</button>
+          <div class="donor-hero-actions">
+            <button class="btn btn-money-soft" type="button" id="jump-to-donate">Make a Donation</button>
+            <button class="btn btn-money" type="button" id="top-general-donate">General Donation</button>
+          </div>
         </div>
-        <div class="stats-row" id="player-stats"></div>
+        <div class="stats-row" id="donor-stats"></div>
       </section>
 
       <section class="player-workspace section-top-gap">
         <aside class="player-left-rail">
           <article class="card">
-            <h2 class="section-title">Player Image</h2>
-            <img id="player-image-preview" class="player-image player-image-tall" alt="Player portrait" />
-            <input type="file" id="player-image-input" accept="image/*" class="section-top-gap-sm" />
+            <h2 class="section-title">Athlete</h2>
+            <img id="donor-player-image" class="player-image player-image-tall" alt="Athlete profile photo" />
+            <p class="subtle-copy section-top-gap-sm" id="donor-player-team"></p>
           </article>
         </aside>
 
         <section class="player-right-panel">
-          <article class="card">
-            <h2 class="section-title">Equipment Goals</h2>
-            <p class="subtle-copy" id="sport-copy"></p>
-            <form id="equipment-form">
-              <div id="equipment-list" class="equipment-grid"></div>
-              <div class="equipment-actions section-top-gap-sm">
-                <button class="btn btn-soft" type="button" id="add-equipment">+ Add Equipment</button>
-                <button class="btn btn-money" type="submit">Save Gear Goals</button>
-              </div>
-            </form>
-            <p class="form-feedback" id="equipment-feedback"></p>
+          <article class="card" id="donate-panel">
+            <h2 class="section-title">Equipment Fundraising</h2>
+            <p id="donation-help" class="subtle-copy">
+              Make a general donation or click any equipment item to donate directly.
+            </p>
+            <p id="donation-feedback" class="form-feedback"></p>
+            <div id="general-donation-card" class="equipment-grid section-top-gap-sm"></div>
+            <div id="donor-equipment-grid" class="equipment-grid section-top-gap-sm"></div>
           </article>
         </section>
       </section>
     </main>
 
-    <div class="modal-backdrop" id="player-modal-backdrop" hidden>
+    <div class="modal-backdrop" id="donor-modal-backdrop" hidden>
       <section
         class="modal"
-        id="confirm-save-modal"
+        id="donation-modal"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="confirm-save-title"
+        aria-labelledby="donation-modal-title"
         hidden
       >
         <div class="modal-header">
-          <h2 id="confirm-save-title">Confirm Changes</h2>
-          <button class="icon-btn" type="button" aria-label="Close modal" data-player-modal-close>
+          <h2 id="donation-modal-title">Make a Donation</h2>
+          <button class="icon-btn" type="button" aria-label="Close modal" data-donor-modal-close>
             &times;
           </button>
         </div>
-        <p class="subtle-copy">Review your updates before saving:</p>
-        <ul id="save-changes-list" class="changes-list"></ul>
-        <div class="modal-actions">
-          <button class="btn btn-ghost" type="button" data-player-modal-close>Cancel</button>
-          <button class="btn btn-money" type="button" id="confirm-save-button">Confirm Changes</button>
-        </div>
-      </section>
-
-      <section
-        class="modal"
-        id="updates-made-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="updates-made-title"
-        hidden
-      >
-        <div class="modal-header">
-          <h2 id="updates-made-title">Updates Made</h2>
-          <button class="icon-btn" type="button" aria-label="Close modal" data-player-modal-close>
-            &times;
-          </button>
-        </div>
-        <p class="subtle-copy">Your dashboard changes were saved successfully.</p>
-        <div class="modal-actions">
-          <button class="btn btn-primary" type="button" data-player-modal-close>Close</button>
-        </div>
+        <form id="donation-form" class="stack-form donation-form section-top-gap-sm">
+          <p class="subtle-copy" id="selected-equipment-copy"></p>
+          <div class="donation-top-row">
+            <label>
+              Donation Amount ($)
+              <input type="number" min="1" step="1" name="amount" required />
+            </label>
+            <button class="btn btn-money-soft" type="button" id="fill-remaining">
+              Donate Remaining
+            </button>
+          </div>
+          <div class="donation-donor-grid">
+            <label>
+              Your Name
+              <input type="text" name="donorName" required />
+            </label>
+            <label>
+              Your Email
+              <input type="email" name="donorEmail" required />
+            </label>
+          </div>
+          <label>
+            Message (Optional)
+            <textarea name="donorMessage" rows="3"></textarea>
+          </label>
+          <div class="donation-footer">
+            <label class="toggle-label">
+              <input type="checkbox" name="anonymous" />
+              Donate anonymously
+            </label>
+            <button class="btn btn-money" type="submit">Confirm Donation</button>
+          </div>
+        </form>
       </section>
     </div>
 
     <script src="./data.js"></script>
     <script src="./action-modal.js"></script>
     <script src="./header-session.js"></script>
-    <script src="./player-dashboard.js"></script>
+    <script src="./player-profile.js"></script>
   </body>
 </html>
