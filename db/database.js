@@ -114,6 +114,12 @@ function ensureColumns() {
   if (!hasColumn("players", "team_name")) {
     db.prepare('ALTER TABLE players ADD COLUMN "team_name" TEXT NOT NULL DEFAULT ""').run();
   }
+  if (!hasColumn("players", "stripe_account_id")) {
+    db.prepare('ALTER TABLE players ADD COLUMN "stripe_account_id" TEXT NOT NULL DEFAULT ""').run();
+  }
+  if (!hasColumn("players", "stripe_onboarding_complete")) {
+    db.prepare('ALTER TABLE players ADD COLUMN "stripe_onboarding_complete" INTEGER NOT NULL DEFAULT 0').run();
+  }
 }
 
 function migratePasswordsAndRecoveryKeys() {
