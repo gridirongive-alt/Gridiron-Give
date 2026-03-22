@@ -1126,6 +1126,29 @@ a.table-name-link {
   gap: 10px;
 }
 
+.donation-fee-toggle {
+  width: 100%;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f7fbff, #f2f7ff);
+  color: #35506f;
+  line-height: 1.45;
+}
+
+.donation-fee-toggle input {
+  margin-top: 2px;
+}
+
+#stripe-onboarding-container {
+  min-height: 640px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f9fbff;
+}
+
 .changes-list {
   margin: 12px 0 0;
   padding-left: 18px;

@@ -191,6 +191,7 @@ const gmailAppPasswordRaw = process.env.GMAIL_APP_PASSWORD || "";
 const gmailAppPassword = compactWhitespace(gmailAppPasswordRaw);
 const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || "").trim();
 const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
+const stripePublishableKey = String(process.env.STRIPE_PUBLISHABLE_KEY || "").trim();
 const transporter =
   gmailUser && gmailAppPassword
     ? nodemailer.createTransport({
@@ -386,49 +387,75 @@ app.post("/api/admin/auth/logout", (_req, res) => {
   return res.json({ ok: true });
 });
 
+app.get("/api/stripe/config", (_req, res) => {
+  res.json({
+    configured: Boolean(stripe && stripePublishableKey),
+    publishableKey: stripePublishableKey || ""
+  });
+});
+
+function ensureStripePlayerAccount(player) {
+  return stripe.accounts.create({
+    type: "express",
+    country: "US",
+    email: normalizeEmail(player.email),
+    business_type: "individual",
+    business_profile: {
+      product_description: "Youth sports equipment fundraising payouts on Gridiron Give"
+    },
+    capabilities: {
+      transfers: { requested: true }
+    },
+    metadata: {
+      playerId: player.id,
+      playerName: `${player.first_name || ""} ${player.last_name || ""}`.trim()
+    }
+  });
+}
+
+async function createOrLoadStripeAccountId({ playerId, stripeAccountId }) {
+  const player = playerId
+    ? db
+        .prepare("SELECT id, email, first_name, last_name, stripe_account_id FROM players WHERE id=?")
+        .get(playerId)
+    : null;
+
+  if (stripeAccountId) {
+    return { stripeAccountId: String(stripeAccountId).trim(), player };
+  }
+  if (!player) {
+    throw new Error("Player not found.");
+  }
+
+  let nextStripeAccountId = String(player.stripe_account_id || "").trim();
+  if (!nextStripeAccountId) {
+    const account = await ensureStripePlayerAccount(player);
+    nextStripeAccountId = account.id;
+    db.prepare("UPDATE players SET stripe_account_id=?, stripe_onboarding_complete=0 WHERE id=?").run(
+      nextStripeAccountId,
+      player.id
+    );
+  }
+
+  return { stripeAccountId: nextStripeAccountId, player };
+}
+
 async function onboardPlayerHandler(req, res) {
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
 
   const playerId = String(req.body?.playerId || "").trim();
-  if (!playerId) {
-    return res.status(400).json({ error: "Player id is required." });
-  }
-
-  const player = db
-    .prepare("SELECT id, email, first_name, last_name, stripe_account_id FROM players WHERE id=?")
-    .get(playerId);
-  if (!player) {
-    return res.status(404).json({ error: "Player not found." });
+  const incomingStripeAccountId = String(req.body?.stripe_account_id || "").trim();
+  if (!playerId && !incomingStripeAccountId) {
+    return res.status(400).json({ error: "Player id or stripe_account_id is required." });
   }
 
   try {
-    let stripeAccountId = String(player.stripe_account_id || "").trim();
-
-    if (!stripeAccountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        country: "US",
-        email: normalizeEmail(player.email),
-        business_type: "individual",
-        business_profile: {
-          product_description: "Youth sports equipment fundraising payouts on Gridiron Give"
-        },
-        capabilities: {
-          transfers: { requested: true }
-        },
-        metadata: {
-          playerId: player.id,
-          playerName: `${player.first_name || ""} ${player.last_name || ""}`.trim()
-        }
-      });
-      stripeAccountId = account.id;
-      db.prepare("UPDATE players SET stripe_account_id=?, stripe_onboarding_complete=0 WHERE id=?").run(
-        stripeAccountId,
-        player.id
-      );
-    }
+    const { stripeAccountId } = await createOrLoadStripeAccountId({
+      playerId,
+      stripeAccountId: incomingStripeAccountId
+    });
 
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
@@ -449,6 +476,167 @@ async function onboardPlayerHandler(req, res) {
 
 app.post("/api/stripe/onboard-player", onboardPlayerHandler);
 app.post("/onboard-player", onboardPlayerHandler);
+
+async function createAccountSessionHandler(req, res) {
+  if (!stripe || !stripePublishableKey) {
+    return res.status(500).json({ error: "Stripe embedded onboarding is not configured yet." });
+  }
+
+  const playerId = String(req.body?.playerId || "").trim();
+  const incomingStripeAccountId = String(req.body?.stripe_account_id || "").trim();
+  if (!playerId && !incomingStripeAccountId) {
+    return res.status(400).json({ error: "Player id or stripe_account_id is required." });
+  }
+
+  try {
+    const { stripeAccountId } = await createOrLoadStripeAccountId({
+      playerId,
+      stripeAccountId: incomingStripeAccountId
+    });
+    const accountSession = await stripe.accountSessions.create({
+      account: stripeAccountId,
+      components: {
+        account_onboarding: {
+          enabled: true
+        }
+      }
+    });
+    return res.json({
+      client_secret: accountSession.client_secret,
+      stripe_account_id: stripeAccountId
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Could not create account session." });
+  }
+}
+
+app.post("/api/stripe/create-account-session", createAccountSessionHandler);
+app.post("/create-account-session", createAccountSessionHandler);
+
+app.post("/api/stripe/player-status", async (req, res) => {
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe is not configured yet." });
+  }
+
+  const playerId = String(req.body?.playerId || "").trim();
+  if (!playerId) {
+    return res.status(400).json({ error: "Player id is required." });
+  }
+
+  const player = db.prepare("SELECT id, stripe_account_id FROM players WHERE id=?").get(playerId);
+  if (!player) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  const stripeAccountId = String(player.stripe_account_id || "").trim();
+  if (!stripeAccountId) {
+    db.prepare("UPDATE players SET stripe_onboarding_complete=0 WHERE id=?").run(playerId);
+    return res.json({ stripe_account_id: "", onboarding_complete: false });
+  }
+
+  try {
+    const account = await stripe.accounts.retrieve(stripeAccountId);
+    const onboardingComplete = Boolean(account.details_submitted);
+    db.prepare("UPDATE players SET stripe_onboarding_complete=? WHERE id=?").run(
+      onboardingComplete ? 1 : 0,
+      playerId
+    );
+    return res.json({
+      stripe_account_id: stripeAccountId,
+      onboarding_complete: onboardingComplete,
+      payouts_enabled: Boolean(account.payouts_enabled),
+      charges_enabled: Boolean(account.charges_enabled)
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Could not refresh Stripe status." });
+  }
+});
+
+async function createCheckoutSessionHandler(req, res) {
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe is not configured yet." });
+  }
+
+  const {
+    stripe_account_id: stripeAccountIdRaw,
+    amount,
+    coverFees,
+    playerId,
+    publicPlayerId,
+    donationType,
+    equipmentItemId,
+    donorName,
+    donorEmail,
+    donorMessage,
+    anonymous
+  } = req.body || {};
+
+  const stripeAccountId = String(stripeAccountIdRaw || "").trim();
+  const baseAmount = Number(amount || 0);
+  if (!stripeAccountId || !Number.isFinite(baseAmount) || baseAmount <= 0) {
+    return res.status(400).json({ error: "stripe_account_id and a valid amount are required." });
+  }
+
+  const cover = Boolean(coverFees);
+  const newTotal = cover ? Math.round(baseAmount / 0.95) : Math.round(baseAmount);
+  const applicationFeeAmount = cover ? newTotal - Math.round(baseAmount) : Math.round(newTotal * 0.05);
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "usd",
+            unit_amount: newTotal,
+            product_data: {
+              name: donationType === "general" ? "General Donation" : "Equipment Donation",
+              description: "Gridiron Give athlete support donation"
+            }
+          }
+        }
+      ],
+      success_url: `${appBaseUrl}/player-profile.html?playerId=${encodeURIComponent(
+        publicPlayerId || ""
+      )}&checkout=success`,
+      cancel_url: `${appBaseUrl}/player-profile.html?playerId=${encodeURIComponent(
+        publicPlayerId || ""
+      )}&checkout=cancelled`,
+      customer_email: donorEmail ? normalizeEmail(donorEmail) : undefined,
+      payment_intent_data: {
+        application_fee_amount: applicationFeeAmount,
+        transfer_data: {
+          destination: stripeAccountId
+        }
+      },
+      metadata: {
+        playerId: String(playerId || ""),
+        publicPlayerId: String(publicPlayerId || ""),
+        donationType: String(donationType || "equipment"),
+        equipmentItemId: String(equipmentItemId || ""),
+        donorName: String(donorName || "").slice(0, 200),
+        donorEmail: normalizeEmail(donorEmail || ""),
+        donorMessage: String(donorMessage || "").slice(0, 400),
+        anonymous: anonymous ? "true" : "false",
+        baseAmount: String(Math.round(baseAmount)),
+        coverFees: cover ? "true" : "false"
+      }
+    });
+
+    return res.json({
+      url: session.url,
+      sessionId: session.id,
+      totalAmount: newTotal,
+      applicationFeeAmount
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Could not create checkout session." });
+  }
+}
+
+app.post("/api/stripe/create-checkout-session", createCheckoutSessionHandler);
+app.post("/create-checkout-session", createCheckoutSessionHandler);
 
 app.get("/api/health/email", async (_req, res) => {
   const configured = Boolean(gmailUser && gmailAppPassword);
