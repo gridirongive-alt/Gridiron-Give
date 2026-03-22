@@ -4,6 +4,7 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 import nodemailer from "nodemailer";
+import Stripe from "stripe";
 import {
   db,
   uid,
@@ -183,6 +184,8 @@ const appBaseUrl = process.env.APP_BASE_URL || `http://localhost:${PORT}`;
 const gmailUser = process.env.GMAIL_USER || "";
 const gmailAppPasswordRaw = process.env.GMAIL_APP_PASSWORD || "";
 const gmailAppPassword = compactWhitespace(gmailAppPasswordRaw);
+const stripeSecretKey = String(process.env.STRIPE_SECRET_KEY || "").trim();
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 const transporter =
   gmailUser && gmailAppPassword
     ? nodemailer.createTransport({
@@ -377,6 +380,70 @@ app.post("/api/admin/auth/logout", (_req, res) => {
   clearAdminSessionCookie(res);
   return res.json({ ok: true });
 });
+
+async function onboardPlayerHandler(req, res) {
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe is not configured yet." });
+  }
+
+  const playerId = String(req.body?.playerId || "").trim();
+  if (!playerId) {
+    return res.status(400).json({ error: "Player id is required." });
+  }
+
+  const player = db
+    .prepare("SELECT id, email, first_name, last_name, stripe_account_id FROM players WHERE id=?")
+    .get(playerId);
+  if (!player) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  try {
+    let stripeAccountId = String(player.stripe_account_id || "").trim();
+
+    if (!stripeAccountId) {
+      const account = await stripe.accounts.create({
+        type: "express",
+        country: "US",
+        email: normalizeEmail(player.email),
+        business_type: "individual",
+        business_profile: {
+          product_description: "Youth sports equipment fundraising payouts on Gridiron Give"
+        },
+        capabilities: {
+          transfers: { requested: true }
+        },
+        metadata: {
+          playerId: player.id,
+          playerName: `${player.first_name || ""} ${player.last_name || ""}`.trim()
+        }
+      });
+      stripeAccountId = account.id;
+      db.prepare("UPDATE players SET stripe_account_id=?, stripe_onboarding_complete=0 WHERE id=?").run(
+        stripeAccountId,
+        player.id
+      );
+    }
+
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${appBaseUrl}/player-dashboard.html?stripe=refresh`,
+      return_url: `${appBaseUrl}/player-dashboard.html`,
+      type: "account_onboarding"
+    });
+
+    return res.json({
+      ok: true,
+      url: accountLink.url,
+      stripeAccountId
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Could not start Stripe onboarding." });
+  }
+}
+
+app.post("/api/stripe/onboard-player", onboardPlayerHandler);
+app.post("/onboard-player", onboardPlayerHandler);
 
 app.get("/api/health/email", async (_req, res) => {
   const configured = Boolean(gmailUser && gmailAppPassword);
