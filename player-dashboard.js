@@ -370,7 +370,7 @@ async function refreshStripeStatus() {
   } catch {}
 }
 
-async function openHostedStripeOnboarding() {
+async function openHostedStripeOnboarding(payoutWindow) {
   const current = refreshPlayer();
   if (!current) throw new Error("Player session is missing.");
   const response = await apiRequest("/onboard-player", {
@@ -386,7 +386,11 @@ async function openHostedStripeOnboarding() {
   if (!response?.url) {
     throw new Error("Stripe onboarding link was not returned.");
   }
-  window.open(response.url, "_blank", "noopener,noreferrer");
+  if (payoutWindow && !payoutWindow.closed) {
+    payoutWindow.location.replace(response.url);
+  } else {
+    window.open(response.url, "_blank");
+  }
   showAction("Stripe payout setup opened in a new tab.");
 }
 
@@ -506,9 +510,13 @@ playerImageInput?.addEventListener("change", async () => {
 });
 
 payoutsButton?.addEventListener("click", async () => {
+  const payoutWindow = window.open("about:blank", "_blank");
   try {
-    await openHostedStripeOnboarding();
+    await openHostedStripeOnboarding(payoutWindow);
   } catch (error) {
+    if (payoutWindow && !payoutWindow.closed) {
+      payoutWindow.close();
+    }
     showAction(error.message || "Could not start Stripe onboarding.", true);
   }
 });
