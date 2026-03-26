@@ -434,9 +434,7 @@ donationForm?.addEventListener("submit", async (event) => {
       window.location.assign(donation.redirectUrl);
       return;
     }
-    donationFeedback.textContent = `Donation confirmed (${money(
-      donation.amount
-    )}). Receipt and player-notification emails will send once Stripe/email integration is enabled.`;
+    donationFeedback.textContent = `Donation confirmed (${money(donation.amount)}).`;
     donationFeedback.classList.remove("is-error");
     showAction(`Donation confirmed (${money(donation.amount)}). Thank you for supporting this athlete.`);
     donationForm.reset();

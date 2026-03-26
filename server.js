@@ -30,8 +30,15 @@ const equipmentItemColumns = new Set(
   db.prepare("PRAGMA table_info(equipment_items)").all().map((col) => String(col.name))
 );
 const hasEquipmentSortOrder = equipmentItemColumns.has("sort_order");
+const stripeWebhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim();
 
-app.use(express.json({ limit: "5mb" }));
+const jsonParser = express.json({ limit: "5mb" });
+
+app.use("/stripe/webhook", express.raw({ type: "application/json" }));
+app.use((req, res, next) => {
+  if (req.path === "/stripe/webhook") return next();
+  return jsonParser(req, res, next);
+});
 
 function parseCookies(req) {
   const raw = String(req.headers.cookie || "");
@@ -203,6 +210,10 @@ const transporter =
       })
     : null;
 
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
 async function sendRecoveryEmail({ to, recoveryKeyValue, role }) {
   const resetLink = `${appBaseUrl}/reset-password.html?email=${encodeURIComponent(
     to
@@ -300,6 +311,199 @@ async function sendCoachWelcomeEmail({ to, coachName, teamName }) {
     html
   });
   return { sent: true };
+}
+
+async function sendPlayerDonationEmail({ to, playerName, donorName, amount, itemName, generalDonation }) {
+  if (!transporter) return { sent: false, reason: "Email transporter not configured." };
+  const donorLabel = donorName || "A donor";
+  const subject = `New donation for ${playerName}`;
+  const html = `
+    <h2>You received a new donation on Gridiron Give</h2>
+    <p><strong>${donorLabel}</strong> donated <strong>${money(amount)}</strong> to support your goals.</p>
+    <p><strong>Donation type:</strong> ${generalDonation ? "General Donation" : itemName}</p>
+    <p>Visit your dashboard to review your updated fundraising progress.</p>
+    <p><a href="${appBaseUrl}/player-dashboard.html">Open Player Dashboard</a></p>
+  `;
+  await transporter.sendMail({
+    from: gmailUser,
+    to,
+    subject,
+    html
+  });
+  return { sent: true };
+}
+
+async function sendDonorReceiptEmail({
+  to,
+  donorName,
+  playerName,
+  amount,
+  itemName,
+  generalDonation
+}) {
+  if (!transporter) return { sent: false, reason: "Email transporter not configured." };
+  const subject = "Your Gridiron Give donation receipt";
+  const html = `
+    <h2>Thank you for your donation</h2>
+    <p>${donorName || "Supporter"}, your donation was received successfully.</p>
+    <p><strong>Athlete:</strong> ${playerName}</p>
+    <p><strong>Donation amount:</strong> ${money(amount)}</p>
+    <p><strong>Applied to:</strong> ${generalDonation ? "General Donation" : itemName}</p>
+    <p>Thank you for supporting youth athletics through Gridiron Give.</p>
+  `;
+  await transporter.sendMail({
+    from: gmailUser,
+    to,
+    subject,
+    html
+  });
+  return { sent: true };
+}
+
+function listEnabledItemsWithRemaining(playerId) {
+  return db
+    .prepare(
+      `SELECT *
+       FROM equipment_items
+       WHERE player_id=? AND enabled=1`
+    )
+    .all(playerId)
+    .map((item) => ({
+      ...item,
+      remaining: Math.max(0, Number(item.goal || 0) - Number(item.raised || 0))
+    }));
+}
+
+function applyDonationToDatabase({
+  playerId,
+  donationType,
+  equipmentItemId,
+  donorName,
+  donorEmail,
+  donorMessage,
+  anonymous,
+  amount,
+  stripeCheckoutSessionId = "",
+  stripePaymentIntentId = "",
+  stripeChargeId = "",
+  checkoutTotalAmount = 0,
+  applicationFeeAmount = 0
+}) {
+  if (!playerId || !donorName || !donorEmail || !amount) {
+    throw new Error("Missing required donation fields.");
+  }
+
+  const value = Number(amount);
+  if (value <= 0) {
+    throw new Error("Amount must be greater than zero.");
+  }
+
+  const enabledItems = listEnabledItemsWithRemaining(playerId);
+
+  if (donationType === "general") {
+    const overallRemaining = enabledItems.reduce((sum, item) => sum + item.remaining, 0);
+    if (overallRemaining > 0 && value > overallRemaining) {
+      throw new Error(`Amount exceeds remaining overall goal ($${overallRemaining.toFixed(2)}).`);
+    }
+    const allocationTargets = enabledItems
+      .filter((item) => item.remaining > 0)
+      .sort((a, b) => b.remaining - a.remaining || b.goal - a.goal || a.name.localeCompare(b.name));
+    if (!allocationTargets.length) {
+      throw new Error("No equipment items are available for general donation.");
+    }
+
+    let remainingDonation = value;
+    const allocations = [];
+    allocationTargets.forEach((item) => {
+      if (remainingDonation <= 0) return;
+      const applied = Math.min(item.remaining, remainingDonation);
+      if (applied <= 0) return;
+      allocations.push({ item, applied });
+      remainingDonation -= applied;
+    });
+
+    const donationIds = [];
+    const tx = db.transaction(() => {
+      allocations.forEach(({ item, applied }) => {
+        const donationId = uid("don");
+        donationIds.push(donationId);
+        db.prepare("UPDATE equipment_items SET raised = raised + ? WHERE id=?").run(applied, item.id);
+        db.prepare(
+          `INSERT INTO donations
+          (
+            id, player_id, equipment_item_id, donor_name, donor_email, donor_message, anonymous, amount,
+            stripe_checkout_session_id, stripe_payment_intent_id, stripe_charge_id, checkout_total_amount, application_fee_amount
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(
+          donationId,
+          playerId,
+          item.id,
+          String(donorName).trim(),
+          normalizeEmail(donorEmail),
+          String(donorMessage || ""),
+          anonymous ? 1 : 0,
+          applied,
+          String(stripeCheckoutSessionId || ""),
+          String(stripePaymentIntentId || ""),
+          String(stripeChargeId || ""),
+          Number(checkoutTotalAmount || 0),
+          Number(applicationFeeAmount || 0)
+        );
+      });
+    });
+    tx();
+    return {
+      donationId: donationIds[0],
+      donationIds,
+      amount: value,
+      allocations: allocations.map(({ item, applied }) => ({
+        equipmentItemId: item.id,
+        equipmentName: item.name,
+        amount: applied
+      }))
+    };
+  }
+
+  const item = db
+    .prepare("SELECT * FROM equipment_items WHERE id=? AND player_id=? AND enabled=1")
+    .get(equipmentItemId, playerId);
+  if (!item) {
+    throw new Error("Equipment item unavailable.");
+  }
+  const remaining = Math.max(0, Number(item.goal) - Number(item.raised));
+  if (remaining > 0 && value > remaining) {
+    throw new Error(`Amount exceeds remaining goal ($${remaining.toFixed(2)}).`);
+  }
+
+  const donationId = uid("don");
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE equipment_items SET raised = raised + ? WHERE id=?").run(value, equipmentItemId);
+    db.prepare(
+      `INSERT INTO donations
+      (
+        id, player_id, equipment_item_id, donor_name, donor_email, donor_message, anonymous, amount,
+        stripe_checkout_session_id, stripe_payment_intent_id, stripe_charge_id, checkout_total_amount, application_fee_amount
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      donationId,
+      playerId,
+      equipmentItemId,
+      String(donorName).trim(),
+      normalizeEmail(donorEmail),
+      String(donorMessage || ""),
+      anonymous ? 1 : 0,
+      value,
+      String(stripeCheckoutSessionId || ""),
+      String(stripePaymentIntentId || ""),
+      String(stripeChargeId || ""),
+      Number(checkoutTotalAmount || 0),
+      Number(applicationFeeAmount || 0)
+    );
+  });
+  tx();
+  return { donationId, amount: value };
 }
 
 function playerTotals(playerId) {
@@ -404,6 +608,7 @@ function ensureStripePlayerAccount(player) {
       product_description: "Youth sports equipment fundraising payouts on Gridiron Give"
     },
     capabilities: {
+      card_payments: { requested: true },
       transfers: { requested: true }
     },
     metadata: {
@@ -552,6 +757,37 @@ app.post("/api/stripe/player-status", async (req, res) => {
   }
 });
 
+async function createStripeDashboardLinkHandler(req, res) {
+  if (!stripe) {
+    return res.status(500).json({ error: "Stripe is not configured yet." });
+  }
+
+  const playerId = String(req.body?.playerId || "").trim();
+  if (!playerId) {
+    return res.status(400).json({ error: "Player id is required." });
+  }
+
+  const player = db.prepare("SELECT id, stripe_account_id FROM players WHERE id=?").get(playerId);
+  if (!player) {
+    return res.status(404).json({ error: "Player not found." });
+  }
+
+  const stripeAccountId = String(player.stripe_account_id || "").trim();
+  if (!stripeAccountId) {
+    return res.status(400).json({ error: "Stripe is not connected for this player yet." });
+  }
+
+  try {
+    const loginLink = await stripe.accounts.createLoginLink(stripeAccountId);
+    return res.json({ url: loginLink.url });
+  } catch (error) {
+    return res.status(500).json({ error: error?.message || "Could not open Stripe dashboard." });
+  }
+}
+
+app.post("/api/stripe/dashboard-link", createStripeDashboardLinkHandler);
+app.post("/stripe/dashboard-link", createStripeDashboardLinkHandler);
+
 async function createCheckoutSessionHandler(req, res) {
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
@@ -606,6 +842,7 @@ async function createCheckoutSessionHandler(req, res) {
       customer_email: donorEmail ? normalizeEmail(donorEmail) : undefined,
       payment_intent_data: {
         application_fee_amount: applicationFeeAmount,
+        on_behalf_of: stripeAccountId,
         transfer_data: {
           destination: stripeAccountId
         }
@@ -637,6 +874,138 @@ async function createCheckoutSessionHandler(req, res) {
 
 app.post("/api/stripe/create-checkout-session", createCheckoutSessionHandler);
 app.post("/create-checkout-session", createCheckoutSessionHandler);
+
+app.post("/stripe/webhook", (req, res) => {
+  if (!stripe || !stripeWebhookSecret) {
+    return res.status(500).send("Stripe webhook is not configured.");
+  }
+
+  const signature = req.headers["stripe-signature"];
+  if (!signature) {
+    return res.status(400).send("Missing Stripe signature.");
+  }
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, signature, stripeWebhookSecret);
+  } catch (error) {
+    return res.status(400).send(`Webhook Error: ${error?.message || "Invalid signature."}`);
+  }
+
+  Promise.resolve()
+    .then(async () => {
+      if (event.type === "checkout.session.completed") {
+        const session = event.data.object;
+        const sessionId = String(session.id || "").trim();
+        if (!sessionId) return;
+
+        const alreadyProcessed = db
+          .prepare("SELECT session_id FROM processed_checkout_sessions WHERE session_id=?")
+          .get(sessionId);
+        if (alreadyProcessed) return;
+
+        const paymentIntentId =
+          typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id || "";
+        if (!paymentIntentId) {
+          throw new Error("Checkout session completed without a payment intent.");
+        }
+
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId, {
+          expand: ["latest_charge"]
+        });
+        const latestCharge =
+          typeof paymentIntent.latest_charge === "string"
+            ? await stripe.charges.retrieve(paymentIntent.latest_charge)
+            : paymentIntent.latest_charge;
+
+        const chargeTransferData = latestCharge?.transfer_data || null;
+        const transferDestination =
+          typeof chargeTransferData?.destination === "string"
+            ? chargeTransferData.destination
+            : chargeTransferData?.destination?.id || "";
+        const transferId =
+          typeof latestCharge?.transfer === "string" ? latestCharge.transfer : latestCharge?.transfer?.id || "";
+        if (!transferDestination) {
+          throw new Error("Stripe destination transfer was skipped for this payment.");
+        }
+
+        const metadata = session.metadata || {};
+        const playerId = String(metadata.playerId || "").trim();
+        const donationType = String(metadata.donationType || "equipment").trim().toLowerCase();
+        const donorEmail = normalizeEmail(metadata.donorEmail || session.customer_details?.email || "");
+        const donorName = String(metadata.donorName || session.customer_details?.name || "Supporter").trim();
+        const donorMessage = String(metadata.donorMessage || "").trim();
+        const equipmentItemId = String(metadata.equipmentItemId || "").trim();
+        const anonymous = String(metadata.anonymous || "") === "true";
+        const athleteAmount = Number(metadata.baseAmount || 0) / 100;
+        const checkoutTotalAmount = Number(session.amount_total || 0) / 100;
+        const applicationFeeAmount = Number(paymentIntent.application_fee_amount || 0) / 100;
+
+        if (!playerId || !donorEmail || athleteAmount <= 0) {
+          throw new Error("Stripe checkout metadata is incomplete.");
+        }
+
+        const donationResult = applyDonationToDatabase({
+          playerId,
+          donationType,
+          equipmentItemId,
+          donorName,
+          donorEmail,
+          donorMessage,
+          anonymous,
+          amount: athleteAmount,
+          stripeCheckoutSessionId: sessionId,
+          stripePaymentIntentId: paymentIntentId,
+          stripeChargeId: String(latestCharge?.id || ""),
+          checkoutTotalAmount,
+          applicationFeeAmount
+        });
+
+        db.prepare(
+          `INSERT INTO processed_checkout_sessions (session_id, payment_intent_id, charge_id, transfer_id, player_id)
+           VALUES (?, ?, ?, ?, ?)`
+        ).run(sessionId, paymentIntentId, String(latestCharge?.id || ""), transferId, playerId);
+
+        const player = db
+          .prepare("SELECT first_name, last_name, email FROM players WHERE id=?")
+          .get(playerId);
+        if (player?.email) {
+          await sendPlayerDonationEmail({
+            to: player.email,
+            playerName: `${player.first_name || ""} ${player.last_name || ""}`.trim() || "your athlete profile",
+            donorName: anonymous ? "An anonymous donor" : donorName,
+            amount: athleteAmount,
+            itemName:
+              donationType === "general"
+                ? "General Donation"
+                : donationResult?.allocations?.[0]?.equipmentName || "Equipment Donation",
+            generalDonation: donationType === "general"
+          });
+        }
+
+        if (donorEmail) {
+          await sendDonorReceiptEmail({
+            to: donorEmail,
+            donorName,
+            playerName: `${player?.first_name || ""} ${player?.last_name || ""}`.trim() || "Athlete",
+            amount: athleteAmount,
+            itemName:
+              donationType === "general"
+                ? "General Donation"
+                : donationResult?.allocations?.[0]?.equipmentName || "Equipment Donation",
+            generalDonation: donationType === "general"
+          });
+        }
+      }
+    })
+    .then(() => {
+      res.json({ received: true });
+    })
+    .catch((error) => {
+      console.error("Stripe webhook processing failed:", error);
+      res.status(500).send(error?.message || "Webhook processing failed.");
+    });
+});
 
 app.get("/api/health/email", async (_req, res) => {
   const configured = Boolean(gmailUser && gmailAppPassword);
@@ -1174,110 +1543,24 @@ app.post("/api/donations", (req, res) => {
     anonymous,
     amount
   } = req.body || {};
-  if (!playerId || !donorName || !donorEmail || !amount) {
-    return res.status(400).json({ error: "Missing required fields." });
-  }
-  const value = Number(amount);
-  if (value <= 0) return res.status(400).json({ error: "Amount must be greater than zero." });
-  const enabledItems = db
-    .prepare(
-      `SELECT *
-       FROM equipment_items
-       WHERE player_id=? AND enabled=1`
-    )
-    .all(playerId)
-    .map((item) => ({
-      ...item,
-      remaining: Math.max(0, Number(item.goal || 0) - Number(item.raised || 0))
-    }));
-
-  if (donationType === "general") {
-    const overallRemaining = enabledItems.reduce((sum, item) => sum + item.remaining, 0);
-    if (overallRemaining > 0 && value > overallRemaining) {
-      return res
-        .status(400)
-        .json({ error: `Amount exceeds remaining overall goal ($${overallRemaining.toFixed(2)}).` });
-    }
-    const allocationTargets = enabledItems
-      .filter((item) => item.remaining > 0)
-      .sort((a, b) => b.remaining - a.remaining || b.goal - a.goal || a.name.localeCompare(b.name));
-    if (!allocationTargets.length) {
-      return res.status(404).json({ error: "No equipment items are available for general donation." });
-    }
-
-    let remainingDonation = value;
-    const allocations = [];
-    allocationTargets.forEach((item) => {
-      if (remainingDonation <= 0) return;
-      const applied = Math.min(item.remaining, remainingDonation);
-      if (applied <= 0) return;
-      allocations.push({ item, applied });
-      remainingDonation -= applied;
-    });
-
-    const donationIds = [];
-    const tx = db.transaction(() => {
-      allocations.forEach(({ item, applied }) => {
-        const donationId = uid("don");
-        donationIds.push(donationId);
-        db.prepare("UPDATE equipment_items SET raised = raised + ? WHERE id=?").run(applied, item.id);
-        db.prepare(
-          `INSERT INTO donations
-          (id, player_id, equipment_item_id, donor_name, donor_email, donor_message, anonymous, amount)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          donationId,
-          playerId,
-          item.id,
-          String(donorName).trim(),
-          normalizeEmail(donorEmail),
-          String(donorMessage || ""),
-          anonymous ? 1 : 0,
-          applied
-        );
-      });
-    });
-    tx();
-    return res.json({
-      donationId: donationIds[0],
-      donationIds,
-      amount: value,
-      allocations: allocations.map(({ item, applied }) => ({
-        equipmentItemId: item.id,
-        equipmentName: item.name,
-        amount: applied
-      }))
-    });
-  }
-
-  const item = db
-    .prepare("SELECT * FROM equipment_items WHERE id=? AND player_id=? AND enabled=1")
-    .get(equipmentItemId, playerId);
-  if (!item) return res.status(404).json({ error: "Equipment item unavailable." });
-  const remaining = Math.max(0, Number(item.goal) - Number(item.raised));
-  if (remaining > 0 && value > remaining) {
-    return res.status(400).json({ error: `Amount exceeds remaining goal ($${remaining.toFixed(2)}).` });
-  }
-  const donationId = uid("don");
-  const tx = db.transaction(() => {
-    db.prepare("UPDATE equipment_items SET raised = raised + ? WHERE id=?").run(value, equipmentItemId);
-    db.prepare(
-      `INSERT INTO donations
-      (id, player_id, equipment_item_id, donor_name, donor_email, donor_message, anonymous, amount)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      donationId,
+  try {
+    const result = applyDonationToDatabase({
       playerId,
+      donationType,
       equipmentItemId,
-      String(donorName).trim(),
-      normalizeEmail(donorEmail),
-      String(donorMessage || ""),
-      anonymous ? 1 : 0,
-      value
-    );
-  });
-  tx();
-  return res.json({ donationId, amount: value });
+      donorName,
+      donorEmail,
+      donorMessage,
+      anonymous,
+      amount
+    });
+    return res.json(result);
+  } catch (error) {
+    const message = error?.message || "Could not process donation.";
+    const status =
+      /unavailable|not found/i.test(message) ? 404 : /missing|amount exceeds|greater than zero/i.test(message) ? 400 : 500;
+    return res.status(status).json({ error: message });
+  }
 });
 
 app.get("/api/admin/overview", (_req, res) => {

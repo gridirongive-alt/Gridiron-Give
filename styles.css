@@ -892,6 +892,13 @@ a.table-name-link {
   justify-self: center;
 }
 
+.player-payout-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
 .donor-hero {
   display: flex;
   justify-content: space-between;
@@ -1453,6 +1460,10 @@ a.table-name-link {
   }
 
   .player-top-center .btn {
+    width: 100%;
+  }
+
+  .player-payout-actions {
     width: 100%;
   }
 

@@ -22,6 +22,7 @@ const publishToggle = document.getElementById("publish-toggle");
 const playerImageInput = document.getElementById("player-image-input");
 const playerImagePreview = document.getElementById("player-image-preview");
 const payoutsButton = document.getElementById("setup-payouts");
+const stripeDashboardButton = document.getElementById("open-stripe-dashboard");
 const logoutButton = document.getElementById("player-logout");
 const addEquipmentButton = document.getElementById("add-equipment");
 const playerModalBackdrop = document.getElementById("player-modal-backdrop");
@@ -272,6 +273,9 @@ function renderPayoutButton(p) {
   payoutsButton.disabled = complete;
   payoutsButton.classList.toggle("btn-money-soft", !complete);
   payoutsButton.classList.toggle("btn-soft", complete);
+  if (stripeDashboardButton) {
+    stripeDashboardButton.hidden = !p?.stripeAccountId;
+  }
 }
 
 function renderImage(p) {
@@ -359,6 +363,7 @@ async function refreshStripeStatus() {
   const current = refreshPlayer();
   if (!current || mode !== "backend" || !current.id) return;
   if (!current.stripeAccountId) return;
+  const wasComplete = Boolean(current.stripeOnboardingComplete);
   try {
     const status = await apiRequest("/api/stripe/player-status", {
       method: "POST",
@@ -367,6 +372,9 @@ async function refreshStripeStatus() {
     current.stripeAccountId = String(status.stripe_account_id || current.stripeAccountId || "");
     current.stripeOnboardingComplete = Boolean(status.onboarding_complete);
     renderPayoutButton(current);
+    if (!wasComplete && current.stripeOnboardingComplete) {
+      showAction("Stripe enabled. Your payout setup is complete.");
+    }
   } catch {}
 }
 
@@ -518,6 +526,34 @@ payoutsButton?.addEventListener("click", async () => {
       payoutWindow.close();
     }
     showAction(error.message || "Could not start Stripe onboarding.", true);
+  }
+});
+
+stripeDashboardButton?.addEventListener("click", async () => {
+  const current = refreshPlayer();
+  if (!current?.id) {
+    showAction("Player session is missing.", true);
+    return;
+  }
+  const dashboardWindow = window.open("about:blank", "_blank");
+  try {
+    const response = await apiRequest("/stripe/dashboard-link", {
+      method: "POST",
+      body: JSON.stringify({ playerId: current.id }),
+    });
+    if (!response?.url) {
+      throw new Error("Stripe dashboard link was not returned.");
+    }
+    if (dashboardWindow && !dashboardWindow.closed) {
+      dashboardWindow.location.replace(response.url);
+    } else {
+      window.open(response.url, "_blank");
+    }
+  } catch (error) {
+    if (dashboardWindow && !dashboardWindow.closed) {
+      dashboardWindow.close();
+    }
+    showAction(error.message || "Could not open Stripe dashboard.", true);
   }
 });
 
