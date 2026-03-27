@@ -996,9 +996,6 @@ async function syncStripePlayerAccountCapabilities({ stripeAccountId, player }) 
       transfers: { requested: true }
     }
   };
-  if (player?.email) {
-    updatePayload.email = normalizeEmail(player.email);
-  }
   if (player) {
     updatePayload.metadata = {
       playerId: player.id,
@@ -1016,9 +1013,6 @@ async function syncStripeCoachAccountCapabilities({ stripeAccountId, coach, team
       transfers: { requested: true }
     }
   };
-  if (coach?.email) {
-    updatePayload.email = normalizeEmail(coach.email);
-  }
   updatePayload.metadata = {
     coachId: coach?.id || "",
     coachName: String(coach?.name || "").trim(),
