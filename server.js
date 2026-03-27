@@ -241,6 +241,7 @@ async function sendRecoveryEmail({ to, recoveryKeyValue, role }) {
 
 async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId }) {
   const setupLink = publicSiteUrl;
+  const dashboardLink = `${appBaseUrl}/player-dashboard.html`;
   const html = `
     <h2>Welcome to Gridiron Give</h2>
     <p>Your coach has added you to the <strong>${teamName}</strong> roster.</p>
@@ -255,12 +256,24 @@ async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId }
       <li>Turn off items you do not need so donors only see relevant gear.</li>
       <li>Save your goals to publish your page for donors.</li>
     </ol>
-    <p><strong>Stripe payouts:</strong> Setup is coming soon. The “Set Up Payouts” flow is already in place.</p>
+    <h3>Stripe Payout Setup</h3>
+    <ol>
+      <li>Open your player dashboard after signup: <a href="${dashboardLink}">${dashboardLink}</a></li>
+      <li>Click <strong>Set Up Payouts</strong> and read the Stripe instructions carefully.</li>
+      <li>Use your real legal identity and banking information exactly as Stripe requests.</li>
+      <li>
+        If Stripe asks for an industry, choose
+        <strong><u>Charities or social service organizations</u></strong>.
+      </li>
+      <li>Do not change Stripe's business framing, description, or account-type direction during setup.</li>
+      <li>Finish every required Stripe step before returning to Gridiron Give.</li>
+    </ol>
+    <p><strong>Important:</strong> After Stripe setup is complete, come back to your dashboard and confirm it shows <strong>Payment Setup Complete</strong>.</p>
     <p>Tip: Ask your coach for realistic target prices so your totals are accurate for donors.</p>
   `;
   if (!transporter) {
     // eslint-disable-next-line no-console
-    console.log("[roster-invite-email:dev]", { to, teamName, coachName, playerPublicId, setupLink });
+    console.log("[roster-invite-email:dev]", { to, teamName, coachName, playerPublicId, setupLink, dashboardLink });
     return { sent: false, reason: "Email transporter not configured." };
   }
   await transporter.sendMail({
@@ -618,6 +631,26 @@ function ensureStripePlayerAccount(player) {
   });
 }
 
+async function syncStripePlayerAccountCapabilities({ stripeAccountId, player }) {
+  if (!stripeAccountId) return null;
+  const updatePayload = {
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true }
+    }
+  };
+  if (player?.email) {
+    updatePayload.email = normalizeEmail(player.email);
+  }
+  if (player) {
+    updatePayload.metadata = {
+      playerId: player.id,
+      playerName: `${player.first_name || ""} ${player.last_name || ""}`.trim()
+    };
+  }
+  return stripe.accounts.update(stripeAccountId, updatePayload);
+}
+
 async function createOrLoadStripeAccountId({ playerId, stripeAccountId }) {
   const player = playerId
     ? db
@@ -640,6 +673,8 @@ async function createOrLoadStripeAccountId({ playerId, stripeAccountId }) {
       nextStripeAccountId,
       player.id
     );
+  } else {
+    await syncStripePlayerAccountCapabilities({ stripeAccountId: nextStripeAccountId, player });
   }
 
   return { stripeAccountId: nextStripeAccountId, player };
@@ -742,6 +777,8 @@ app.post("/api/stripe/player-status", async (req, res) => {
   try {
     const account = await stripe.accounts.retrieve(stripeAccountId);
     const onboardingComplete = Boolean(account.details_submitted);
+    const transfersCapability = String(account.capabilities?.transfers || "");
+    const cardPaymentsCapability = String(account.capabilities?.card_payments || "");
     db.prepare("UPDATE players SET stripe_onboarding_complete=? WHERE id=?").run(
       onboardingComplete ? 1 : 0,
       playerId
@@ -749,6 +786,8 @@ app.post("/api/stripe/player-status", async (req, res) => {
     return res.json({
       stripe_account_id: stripeAccountId,
       onboarding_complete: onboardingComplete,
+      transfers_capability: transfersCapability,
+      card_payments_capability: cardPaymentsCapability,
       payouts_enabled: Boolean(account.payouts_enabled),
       charges_enabled: Boolean(account.charges_enabled)
     });
@@ -818,6 +857,22 @@ async function createCheckoutSessionHandler(req, res) {
   const applicationFeeAmount = cover ? newTotal - Math.round(baseAmount) : Math.round(newTotal * 0.05);
 
   try {
+    const destinationAccount = await stripe.accounts.retrieve(stripeAccountId);
+    const transfersCapability = String(destinationAccount.capabilities?.transfers || "");
+    const cardPaymentsCapability = String(destinationAccount.capabilities?.card_payments || "");
+    if (transfersCapability !== "active") {
+      return res.status(400).json({
+        error:
+          "This player’s Stripe account is not ready to receive transfers yet. Have the player reopen Stripe payout setup and finish all required steps."
+      });
+    }
+    if (cardPaymentsCapability && cardPaymentsCapability !== "active") {
+      return res.status(400).json({
+        error:
+          "This player’s Stripe account is still waiting on payment capability approval. Have the player reopen Stripe payout setup and complete Stripe verification."
+      });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
