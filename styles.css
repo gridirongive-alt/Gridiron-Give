@@ -899,6 +899,18 @@ a.table-name-link {
   gap: 10px;
 }
 
+.stripe-setup-scroll {
+  max-height: min(48vh, 420px);
+  overflow: auto;
+  padding-right: 8px;
+}
+
+.stripe-setup-scroll::after {
+  content: "";
+  display: block;
+  height: 2px;
+}
+
 .donor-hero {
   display: flex;
   justify-content: space-between;
@@ -1258,15 +1270,23 @@ a.table-name-link {
 }
 
 .policy-check {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 8px 10px;
   font-size: 0.9rem;
 }
 
 .policy-check input[type="checkbox"] {
-  margin-right: 4px;
+  margin: 3px 0 0;
+}
+
+.policy-copy {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  line-height: 1.5;
 }
 
 .inline-link {

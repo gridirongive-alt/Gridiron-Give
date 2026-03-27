@@ -116,6 +116,62 @@
           <button class="btn btn-primary" type="button" data-player-modal-close>Close</button>
         </div>
       </section>
+
+      <section
+        class="modal"
+        id="stripe-setup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stripe-setup-title"
+        hidden
+      >
+        <div class="modal-header">
+          <h2 id="stripe-setup-title">Important: Read Before Connecting Stripe</h2>
+          <button class="icon-btn" type="button" aria-label="Close modal" data-player-modal-close>
+            &times;
+          </button>
+        </div>
+        <div class="stripe-setup-scroll section-top-gap-sm" id="stripe-setup-scroll">
+          <p class="subtle-copy">
+            Stripe Express will walk you through identity verification and bank account setup so Gridiron
+            Give can send your donations to you automatically.
+          </p>
+          <div class="welcome-overview-grid section-top-gap-sm">
+            <article class="welcome-overview-card">
+              <h3>Use Your Real Information</h3>
+              <p>Enter your legal name, address, date of birth, and banking details exactly as requested.</p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Do Not Change The Business Framing</h3>
+              <p>
+                Stripe may show business-style wording during Express setup. Do not try to rewrite the company
+                description or switch the account into a different type.
+              </p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Finish Every Required Step</h3>
+              <p>
+                If Stripe asks for more verification, complete it before returning. Partial setup can block
+                donations from reaching your payout account.
+              </p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Come Back To Gridiron Give</h3>
+              <p>
+                After Stripe finishes, return to your dashboard. We will re-check your account and show
+                <strong>Payment Setup Complete</strong> when Stripe is enabled.
+              </p>
+            </article>
+          </div>
+          <p class="subtle-copy section-top-gap-sm">
+            Continue only when you are ready to complete the full Stripe Express setup in one pass.
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-player-modal-close>Cancel</button>
+          <button class="btn btn-money" type="button" id="continue-stripe-setup" disabled>Continue To Stripe</button>
+        </div>
+      </section>
     </div>
 
     <script src="./data.js"></script>

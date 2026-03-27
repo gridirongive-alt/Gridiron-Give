@@ -28,6 +28,9 @@ const addEquipmentButton = document.getElementById("add-equipment");
 const playerModalBackdrop = document.getElementById("player-modal-backdrop");
 const confirmSaveModal = document.getElementById("confirm-save-modal");
 const updatesMadeModal = document.getElementById("updates-made-modal");
+const stripeSetupModal = document.getElementById("stripe-setup-modal");
+const stripeSetupScroll = document.getElementById("stripe-setup-scroll");
+const continueStripeSetupButton = document.getElementById("continue-stripe-setup");
 const changesList = document.getElementById("save-changes-list");
 const confirmSaveButton = document.getElementById("confirm-save-button");
 const playerModalCloseButtons = [...document.querySelectorAll("[data-player-modal-close]")];
@@ -172,6 +175,7 @@ function openPlayerModal(modalId) {
   playerModalBackdrop.hidden = false;
   if (confirmSaveModal) confirmSaveModal.hidden = modalId !== "confirm-save-modal";
   if (updatesMadeModal) updatesMadeModal.hidden = modalId !== "updates-made-modal";
+  if (stripeSetupModal) stripeSetupModal.hidden = modalId !== "stripe-setup-modal";
 }
 
 function closePlayerModal() {
@@ -179,6 +183,7 @@ function closePlayerModal() {
   playerModalBackdrop.hidden = true;
   if (confirmSaveModal) confirmSaveModal.hidden = true;
   if (updatesMadeModal) updatesMadeModal.hidden = true;
+  if (stripeSetupModal) stripeSetupModal.hidden = true;
 }
 
 function playerPercent(p) {
@@ -395,11 +400,55 @@ async function openHostedStripeOnboarding(payoutWindow) {
     throw new Error("Stripe onboarding link was not returned.");
   }
   if (payoutWindow && !payoutWindow.closed) {
+    try {
+      payoutWindow.document.open();
+      payoutWindow.document.write(`
+        <!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Redirecting To Stripe</title>
+            <style>
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                font-family: Nunito, sans-serif;
+                background: #f4f8ff;
+                color: #14213d;
+              }
+              .wrap {
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <h2>Redirecting to Stripe...</h2>
+              <p>You can return to Gridiron Give after Stripe setup is complete.</p>
+            </div>
+          </body>
+        </html>
+      `);
+      payoutWindow.document.close();
+    } catch {}
     payoutWindow.location.replace(response.url);
   } else {
     window.open(response.url, "_blank");
   }
   showAction("Stripe payout setup opened in a new tab.");
+}
+
+function resetStripeSetupGate() {
+  if (stripeSetupScroll) stripeSetupScroll.scrollTop = 0;
+  if (continueStripeSetupButton) continueStripeSetupButton.disabled = true;
+}
+
+function evaluateStripeSetupGate() {
+  if (!stripeSetupScroll || !continueStripeSetupButton) return;
+  const threshold = stripeSetupScroll.scrollHeight - stripeSetupScroll.clientHeight - 8;
+  continueStripeSetupButton.disabled = stripeSetupScroll.scrollTop < Math.max(0, threshold);
 }
 
 equipmentList?.addEventListener("input", (event) => {
@@ -518,8 +567,14 @@ playerImageInput?.addEventListener("change", async () => {
 });
 
 payoutsButton?.addEventListener("click", async () => {
+  resetStripeSetupGate();
+  openPlayerModal("stripe-setup-modal");
+});
+
+continueStripeSetupButton?.addEventListener("click", async () => {
   const payoutWindow = window.open("about:blank", "_blank");
   try {
+    closePlayerModal();
     await openHostedStripeOnboarding(payoutWindow);
   } catch (error) {
     if (payoutWindow && !payoutWindow.closed) {
@@ -573,6 +628,8 @@ playerModalBackdrop?.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closePlayerModal();
 });
+
+stripeSetupScroll?.addEventListener("scroll", evaluateStripeSetupGate);
 
 window.addEventListener("focus", () => {
   refreshStripeStatus();
