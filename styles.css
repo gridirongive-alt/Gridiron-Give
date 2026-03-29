@@ -14,6 +14,8 @@
   --shadow: 0 18px 42px rgba(15, 40, 80, 0.08);
   --shadow-sm: 0 8px 20px rgba(15, 40, 80, 0.08);
   --radius: 20px;
+  --font-body: "Nunito", "Avenir Next", "Segoe UI", sans-serif;
+  --font-display: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 html {
@@ -31,12 +33,22 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: "Nunito", sans-serif;
+  font-family: var(--font-body);
   color: var(--text);
   background: linear-gradient(170deg, #f4f9ff 0%, #eaf3ff 46%, #e2eeff 100%);
   position: relative;
   overflow-x: hidden;
   animation: page-fade 220ms ease-out;
+}
+
+h1,
+h2,
+h3,
+.dashboard-title,
+.section-title,
+.logo-text,
+.eyebrow {
+  font-family: var(--font-display);
 }
 
 .intro-overlay {
@@ -72,18 +84,18 @@ body {
 }
 
 .intro-logo {
-  width: min(760px, 84vw);
+  width: min(680px, 80vw);
   height: auto;
-  max-height: 60vh;
+  max-height: 56vh;
   object-fit: contain;
 }
 
 .intro-spinner {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   margin: 0 auto;
   display: block;
-  border: 4px solid rgba(255, 255, 255, 0.18);
+  border: 5px solid rgba(255, 255, 255, 0.18);
   border-top-color: #ffffff;
   border-right-color: rgba(255, 255, 255, 0.72);
   border-radius: 999px;
@@ -161,8 +173,7 @@ body {
 }
 
 .logo-text {
-  font-family: "Nunito", sans-serif;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   font-weight: 800;
   text-transform: uppercase;
   color: #fff;
@@ -246,9 +257,9 @@ body {
   border: 1px solid transparent;
   border-radius: 14px;
   font-family: inherit;
-  font-size: 0.94rem;
+  font-size: 0.95rem;
   font-weight: 800;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   cursor: pointer;
   padding: 10px 16px;
   min-height: 44px;
@@ -380,10 +391,10 @@ main {
 h1 {
   margin: 12px auto 12px;
   max-width: 14ch;
-  font-family: "Nunito", sans-serif;
   font-weight: 900;
   font-size: clamp(2rem, 5vw, 3.5rem);
-  line-height: 1.05;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
 }
 
 .hero-copy {
@@ -606,23 +617,31 @@ select:focus {
   border-radius: 20px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
-  padding: 20px;
+  padding: 24px;
   animation: modal-in 200ms ease-out;
 }
 
 .modal-wide {
-  width: min(720px, 100%);
+  width: min(820px, 100%);
+}
+
+.modal-roomy {
+  padding: 28px;
+  border-radius: 24px;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
 }
 
 .modal-header h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.45rem;
+  line-height: 1.08;
 }
 
 .icon-btn {
@@ -643,20 +662,20 @@ select:focus {
 }
 
 .tablist {
-  margin-top: 16px;
+  margin-top: 18px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   background: #eef3fb;
   border-radius: 14px;
-  padding: 5px;
+  padding: 6px;
 }
 
 .tab {
   background: transparent;
   border: 0;
-  padding: 10px;
+  padding: 12px 14px;
   border-radius: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--muted);
   cursor: pointer;
 }
@@ -668,19 +687,19 @@ select:focus {
 }
 
 .tab-panel {
-  margin-top: 16px;
+  margin-top: 20px;
 }
 
 .modal-form {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .modal-form label {
   display: grid;
-  gap: 6px;
-  font-size: 0.92rem;
-  font-weight: 600;
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .choice-group {
@@ -730,11 +749,11 @@ select:focus {
 
 .payout-choice-card {
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 20px;
+  padding: 22px;
   background: #f8fbff;
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .payout-choice-card.is-recommended {
@@ -750,9 +769,11 @@ select:focus {
 }
 
 .choice-points {
-  margin: 0;
+  margin: 2px 0 0;
   padding-left: 20px;
   color: var(--text);
+  display: grid;
+  gap: 8px;
 }
 
 .choice-caution {
@@ -766,9 +787,9 @@ select:focus {
   align-items: start;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   background: #f8fbff;
 }
 
@@ -797,6 +818,10 @@ select:focus {
   grid-template-columns: 1fr;
 }
 
+.coach-dashboard-stack {
+  gap: 20px;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -807,6 +832,11 @@ select:focus {
   animation: rise-in 320ms ease-out both;
 }
 
+.coach-card {
+  border-radius: 24px;
+  padding: 26px;
+}
+
 .card:hover {
   transform: translateY(-2px);
   transition: transform 180ms ease;
@@ -815,7 +845,6 @@ select:focus {
 .dashboard-title {
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2.1rem);
-  font-family: "Nunito", sans-serif;
   font-weight: 900;
 }
 
@@ -858,6 +887,16 @@ select:focus {
   gap: 6px;
   font-size: 0.92rem;
   font-weight: 600;
+}
+
+.coach-card .stack-form {
+  gap: 14px;
+}
+
+.coach-card .stack-form label {
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .table-wrap {
@@ -1214,36 +1253,36 @@ a.table-name-link {
 
 .donation-form {
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px;
+  border-radius: 18px;
+  padding: 18px;
   background: #f9fbfe;
 }
 
 .donation-top-row {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   align-items: end;
 }
 
 .donation-donor-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 14px;
 }
 
 .donation-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 14px;
 }
 
 .donation-fee-toggle {
   width: 100%;
   align-items: flex-start;
-  padding: 12px 14px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   background: linear-gradient(180deg, #f7fbff, #f2f7ff);
   color: #35506f;
   line-height: 1.45;
@@ -1277,7 +1316,7 @@ a.table-name-link {
 }
 
 .modal-actions {
-  margin-top: 14px;
+  margin-top: 18px;
   display: flex;
   justify-content: flex-end;
   gap: 10px;
@@ -1325,7 +1364,7 @@ a.table-name-link {
 
 .coach-collapsible {
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 18px;
   background: #f7fbff;
 }
 
@@ -1335,7 +1374,7 @@ a.table-name-link {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 14px;
+  padding: 16px 18px;
   cursor: pointer;
   user-select: none;
 }
@@ -1354,7 +1393,29 @@ a.table-name-link {
 }
 
 .coach-collapsible-content {
-  padding: 4px 14px 14px;
+  padding: 8px 18px 18px;
+}
+
+.coach-collapsible-summary .section-title {
+  margin-bottom: 0;
+}
+
+#donation-modal {
+  width: min(640px, 100%);
+}
+
+#donation-modal .modal-header {
+  margin-bottom: 14px;
+}
+
+#donation-modal .stack-form {
+  gap: 16px;
+}
+
+#donation-modal .stack-form label {
+  gap: 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 #csv-preview-section input {
@@ -1371,20 +1432,23 @@ a.table-name-link {
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
-  gap: 8px 10px;
-  font-size: 0.9rem;
+  gap: 10px 12px;
+  font-size: 0.94rem;
+  padding: 4px 0 2px;
 }
 
 .policy-check input[type="checkbox"] {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
+  width: 18px;
+  height: 18px;
 }
 
 .policy-copy {
   display: inline-flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 6px;
-  line-height: 1.5;
+  align-items: baseline;
+  gap: 2px 6px;
+  line-height: 1.6;
 }
 
 .inline-link {
@@ -1402,26 +1466,27 @@ a.table-name-link {
 .welcome-overview-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
 .welcome-overview-card {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 16px;
+  padding: 16px;
   background: #f7fbff;
 }
 
 .welcome-overview-card h3 {
-  margin: 0 0 6px;
-  font-size: 0.98rem;
+  margin: 0 0 8px;
+  font-size: 1.04rem;
 }
 
 .welcome-overview-card p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: 0.94rem;
+  line-height: 1.55;
 }
 
 .site-footer {
@@ -1646,6 +1711,11 @@ a.table-name-link {
     padding: 16px;
   }
 
+  .modal-roomy {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
   .filter-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1673,6 +1743,20 @@ a.table-name-link {
     font-size: clamp(1.8rem, 10vw, 2.4rem);
     line-height: 1.08;
     max-width: 12ch;
+  }
+
+  .modal-header h2 {
+    font-size: 1.28rem;
+  }
+
+  .modal-form {
+    gap: 12px;
+  }
+
+  .selected-setup-banner,
+  .payout-choice-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .home-page .hero-copy {
