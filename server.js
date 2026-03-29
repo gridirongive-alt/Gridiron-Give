@@ -1,4 +1,5 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -12,7 +13,10 @@ import {
   equipmentTemplateForSport,
   recoveryKey,
   passwordHash,
-  isBcryptHash
+  isBcryptHash,
+  writeLatestBackupSnapshot,
+  latestJsonBackupPath,
+  latestExcelBackupPath
 } from "./db/database.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -163,6 +167,14 @@ app.use((req, res, next) => {
     return requireAdminApi(req, res, next);
   }
   next();
+});
+
+app.use((req, res, next) => {
+  const pathname = String(req.path || "");
+  if (pathname === "/data" || pathname.startsWith("/data/")) {
+    return res.status(404).send("Not found");
+  }
+  return next();
 });
 
 app.use(express.static(__dirname));
@@ -2439,6 +2451,23 @@ app.get("/api/admin/columns/:tableName", (req, res) => {
   res.json({ tableName, columns });
 });
 
+app.get("/api/admin/backups/latest", (_req, res) => {
+  if (!latestJsonBackupPath) return res.status(500).json({ error: "Backup path not available." });
+  if (!pathExists(latestJsonBackupPath)) {
+    runDatabaseBackup("admin-download");
+  }
+  return res.download(latestJsonBackupPath, "gridiron-give-backup-latest.json");
+});
+
+app.get("/api/admin/backups/latest-excel", (_req, res) => {
+  if (!latestExcelBackupPath) return res.status(500).json({ error: "Backup path not available." });
+  if (!pathExists(latestExcelBackupPath)) {
+    runDatabaseBackup("admin-download");
+  }
+  res.setHeader("Content-Type", "application/vnd.ms-excel");
+  return res.download(latestExcelBackupPath, "gridiron-give-backup-latest.xml");
+});
+
 app.post("/api/admin/sql", (req, res) => {
   const sql = String(req.body?.sql || "").trim();
   if (!sql) return res.status(400).json({ error: "SQL is required." });
@@ -2560,7 +2589,31 @@ app.get("/admin-db.html", requireAdminPage, (_req, res) => {
   res.sendFile(path.join(__dirname, "admin-db.html"));
 });
 
+function runDatabaseBackup(reason) {
+  try {
+    const backupPaths = writeLatestBackupSnapshot();
+    console.log(
+      `Database backup written (${reason}) -> json: ${backupPaths.jsonPath}, excel: ${backupPaths.excelPath}`
+    );
+  } catch (error) {
+    console.error(`Database backup failed (${reason}):`, error?.message || error);
+  }
+}
+
+function pathExists(targetPath) {
+  try {
+    return Boolean(targetPath) && fs.existsSync(targetPath);
+  } catch {
+    return false;
+  }
+}
+
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Gridiron Give server running on http://localhost:${PORT}`);
+  runDatabaseBackup("startup");
 });
+
+setInterval(() => {
+  runDatabaseBackup("daily");
+}, 24 * 60 * 60 * 1000);
