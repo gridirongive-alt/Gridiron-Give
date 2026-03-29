@@ -9,6 +9,9 @@ const dataDir = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(rootDir, "data");
 const dbPath = path.join(dataDir, "gridiron-give.sqlite");
+const backupDir = path.join(dataDir, "backups");
+const latestJsonBackupPath = path.join(backupDir, "gridiron-give-backup-latest.json");
+const latestExcelBackupPath = path.join(backupDir, "gridiron-give-backup-latest.xml");
 const schemaPath = path.join(rootDir, "db", "schema.sql");
 
 function randomPart(length) {
@@ -90,6 +93,7 @@ function equipmentTemplateForSport(sport) {
 }
 
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
 export const db = new Database(dbPath);
 db.pragma("journal_mode = WAL");
@@ -222,4 +226,112 @@ function migratePasswordsAndRecoveryKeys() {
 ensureColumns();
 migratePasswordsAndRecoveryKeys();
 
-export { uid, playerPublicId, equipmentTemplateForSport, recoveryKey, passwordHash, isBcryptHash };
+function escapeXml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function buildBackupSnapshot() {
+  return {
+    generated_at: new Date().toISOString(),
+    source_db_path: dbPath,
+    tables: {
+      coaches: db.prepare("SELECT * FROM coaches ORDER BY created_at ASC, rowid ASC").all(),
+      teams: db.prepare("SELECT * FROM teams ORDER BY created_at ASC, rowid ASC").all(),
+      players: db.prepare("SELECT * FROM players ORDER BY created_at ASC, rowid ASC").all(),
+      team_equipment_templates: db
+        .prepare("SELECT * FROM team_equipment_templates ORDER BY team_id ASC, sort_order ASC, rowid ASC")
+        .all(),
+      equipment_items: db
+        .prepare("SELECT * FROM equipment_items ORDER BY player_id ASC, sort_order ASC, rowid ASC")
+        .all(),
+      donations: db.prepare("SELECT * FROM donations ORDER BY created_at ASC, rowid ASC").all(),
+      processed_checkout_sessions: db
+        .prepare("SELECT * FROM processed_checkout_sessions ORDER BY processed_at ASC, rowid ASC")
+        .all()
+    }
+  };
+}
+
+function spreadsheetCell(value) {
+  if (value === null || value === undefined) {
+    return '<Cell><Data ss:Type="String"></Data></Cell>';
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `<Cell><Data ss:Type="Number">${value}</Data></Cell>`;
+  }
+  if (typeof value === "boolean") {
+    return `<Cell><Data ss:Type="String">${value ? "TRUE" : "FALSE"}</Data></Cell>`;
+  }
+  return `<Cell><Data ss:Type="String">${escapeXml(value)}</Data></Cell>`;
+}
+
+function buildExcelWorkbook(snapshot) {
+  const worksheetXml = Object.entries(snapshot.tables)
+    .map(([tableName, rows]) => {
+      const columns = Array.from(
+        rows.reduce((set, row) => {
+          Object.keys(row || {}).forEach((key) => set.add(key));
+          return set;
+        }, new Set())
+      );
+      const headerRow = columns.map((column) => spreadsheetCell(column)).join("");
+      const bodyRows = rows
+        .map((row) => {
+          const cells = columns.map((column) => spreadsheetCell(row?.[column])).join("");
+          return `<Row>${cells}</Row>`;
+        })
+        .join("");
+      return `
+        <Worksheet ss:Name="${escapeXml(tableName.slice(0, 31) || "Sheet")}">
+          <Table>
+            <Row>${headerRow}</Row>
+            ${bodyRows}
+          </Table>
+        </Worksheet>
+      `;
+    })
+    .join("");
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+  xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+    <Author>Gridiron Give</Author>
+    <Created>${escapeXml(snapshot.generated_at)}</Created>
+  </DocumentProperties>
+  ${worksheetXml}
+</Workbook>`;
+}
+
+function writeLatestBackupSnapshot() {
+  const snapshot = buildBackupSnapshot();
+  fs.writeFileSync(latestJsonBackupPath, JSON.stringify(snapshot, null, 2));
+  fs.writeFileSync(latestExcelBackupPath, buildExcelWorkbook(snapshot));
+  return {
+    jsonPath: latestJsonBackupPath,
+    excelPath: latestExcelBackupPath
+  };
+}
+
+export {
+  uid,
+  playerPublicId,
+  equipmentTemplateForSport,
+  recoveryKey,
+  passwordHash,
+  isBcryptHash,
+  writeLatestBackupSnapshot,
+  backupDir,
+  latestJsonBackupPath,
+  latestExcelBackupPath
+};
