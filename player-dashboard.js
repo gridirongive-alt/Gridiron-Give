@@ -227,10 +227,10 @@ function renderEquipment() {
     const progressPercent =
       item.enabled && item.goal > 0 ? Math.min(100, Math.round((item.raised / item.goal) * 100)) : 0;
     const row = document.createElement("div");
-    row.className = `equipment-row ${item.enabled ? "" : "is-disabled"}`;
+    row.className = `equipment-row equipment-row-edit ${item.enabled ? "" : "is-disabled"}`;
     row.dataset.index = String(index);
     row.innerHTML = `
-      <div class="equipment-row-top">
+      <div class="equipment-card-topline">
         <label class="toggle-label compact-toggle">
           <input type="checkbox" data-field="enabled" ${item.enabled ? "checked" : ""} ${coachManaged ? "disabled" : ""} />
           Public profile
@@ -240,13 +240,14 @@ function renderEquipment() {
         </button>
       </div>
 
-      <div class="equipment-main">
-        <label class="equipment-name">
+      <div class="equipment-card-center">
+        <label class="equipment-card-field">
           <span class="field-caption">Equipment</span>
           <input type="text" data-field="name" value="${item.name}" placeholder="Equipment name" ${coachManaged ? "disabled" : ""} />
         </label>
-        <label class="equipment-goal">
-          <span class="field-caption">Goal</span>
+        <p class="equipment-card-price">$${Number(item.goal || 0).toFixed(0)}</p>
+        <label class="equipment-card-field equipment-card-goal">
+          <span class="field-caption">Set Goal</span>
           <div class="goal-input-wrap">
             <span>$</span>
             <input type="number" min="0" step="1" data-field="goal" value="${item.goal}" ${
@@ -254,21 +255,19 @@ function renderEquipment() {
     } />
           </div>
         </label>
-      </div>
-
-      <div class="equipment-footer">
-        <div class="equipment-meta">
+        <div class="equipment-card-meta">
           <span class="meta-pill">${item.category || "General"}</span>
           <span class="meta-pill meta-pill-muted">Typical price: ${
           item.priceRange || "Not set"
           }</span>
           ${item.enabled ? "" : '<span class="meta-pill meta-pill-muted">Hidden From Public</span>'}
         </div>
-        <span class="equipment-raised">$${item.raised.toFixed(2)} raised</span>
-      </div>
-
-      <div class="progress-track">
-        <div class="progress-fill" style="width:${progressPercent}%"></div>
+        <div class="equipment-card-progress">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${progressPercent}%"></div>
+          </div>
+          <p class="equipment-card-progress-copy">$${item.raised.toFixed(2)} of $${Number(item.goal || 0).toFixed(2)} raised</p>
+        </div>
       </div>
     `;
     equipmentList.appendChild(row);

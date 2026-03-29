@@ -222,16 +222,16 @@ function renderTeamDonationPanel() {
   teamDonateCopy.textContent = "Select a shared team item and then choose which player you are supporting. Team general donations split evenly across the roster.";
   const teamProgress = progress(state.totalTeamRaised, state.totalTeamGoal);
   teamGeneralDonationCard.innerHTML = `
-    <div class="equipment-row equipment-row-general">
-      <div class="equipment-row-top">
-        <strong>General Donation</strong>
-        <span class="meta-pill meta-pill-muted">Split evenly across roster</span>
-      </div>
-      <p class="subtle-copy">${money(state.totalTeamRaised)} raised of ${money(state.totalTeamGoal)}</p>
-      <div class="progress-track"><div class="progress-fill" style="width:${teamProgress}%"></div></div>
-      <div class="equipment-actions section-top-gap-sm">
-        <span class="subtle-copy">Supports every player on this team</span>
-        <button class="btn btn-money" type="button" id="team-general-donate-button">Donate To Team Goal</button>
+    <div class="equipment-row equipment-card-general equipment-card-clickable" id="team-general-donate-button">
+      <div class="equipment-card-center">
+        <p class="equipment-card-title">General Donation</p>
+        <p class="equipment-card-price">${money(state.totalTeamGoal)}</p>
+        <p class="equipment-card-general-copy">Supports every player on this team and splits the donation evenly across the roster.</p>
+        <div class="equipment-card-progress">
+          <div class="progress-track"><div class="progress-fill" style="width:${teamProgress}%"></div></div>
+          <p class="equipment-card-progress-copy">${money(state.totalTeamRaised)} of ${money(state.totalTeamGoal)} raised</p>
+        </div>
+        <button class="btn btn-money equipment-card-cta" type="button">Donate To Team Goal</button>
       </div>
     </div>
   `;
@@ -239,16 +239,16 @@ function renderTeamDonationPanel() {
   state.teamEquipment.forEach((item) => {
     if (Number(item.enabled) === 0) return;
     const row = document.createElement("div");
-    row.className = "equipment-row";
+    row.className = "equipment-row equipment-card-clickable";
+    row.dataset.teamEq = item.name;
     row.innerHTML = `
-      <div class="equipment-row-top">
-        <strong>${item.name}</strong>
-        <span class="meta-pill meta-pill-muted">${item.category || "General"}</span>
-      </div>
-      <p class="subtle-copy">${money(item.goal)} per player</p>
-      <div class="equipment-actions section-top-gap-sm">
-        <span class="subtle-copy">Donors choose a player in the next step.</span>
-        <button class="btn btn-money" type="button" data-team-eq="${item.name}">Donate ${item.name}</button>
+      <div class="equipment-card-center">
+        <p class="equipment-card-title">${item.name}</p>
+        <p class="equipment-card-price">${money(item.goal)}</p>
+        <div class="equipment-card-progress">
+          <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
+          <p class="equipment-card-progress-copy">Donors choose a player in the next step</p>
+        </div>
       </div>
     `;
     teamEquipmentGrid.appendChild(row);
@@ -258,14 +258,14 @@ function renderTeamDonationPanel() {
 teamGeneralDonationCard?.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
-  if (target.id !== "team-general-donate-button") return;
+  if (!target.closest("#team-general-donate-button")) return;
   openDonationModal("team-general");
 });
 
 teamEquipmentGrid?.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
-  const equipmentName = target.dataset.teamEq;
+  const equipmentName = target.closest("[data-team-eq]")?.dataset.teamEq;
   if (!equipmentName) return;
   openDonationModal("equipment", equipmentName);
 });

@@ -19,6 +19,7 @@ const coachSetupPayoutsButton = document.getElementById("coach-setup-payouts");
 const coachStripeDashboardButton = document.getElementById("coach-open-stripe-dashboard");
 const coachPayoutActions = document.getElementById("coach-payout-actions");
 const coachPayoutCopy = document.getElementById("coach-payout-copy");
+const recipientModeGroup = document.getElementById("recipient-mode-group");
 const sharedEquipmentCard = document.getElementById("shared-equipment-card");
 const sharedEquipmentList = document.getElementById("shared-equipment-list");
 const sharedEquipmentAddButton = document.getElementById("shared-equipment-add");
@@ -100,8 +101,17 @@ function updateTeamForm() {
   teamForm.teamLocation.value = state.team.location || "";
   teamForm.teamSport.value = state.team.sport || "";
   const recipientMode = String(state.team.recipient_mode || state.team.recipientMode || "coach");
-  const recipientInput = teamForm.querySelector(`input[name="recipientMode"][value="${recipientMode}"]`);
-  if (recipientInput) recipientInput.checked = true;
+  const recipientInputs = [...teamForm.querySelectorAll('input[name="recipientMode"]')];
+  recipientInputs.forEach((input) => {
+    const matches = input.value === recipientMode;
+    input.checked = matches;
+    input.disabled = true;
+    const label = input.closest(".choice-card");
+    if (label) label.hidden = !matches;
+  });
+  if (recipientModeGroup) {
+    recipientModeGroup.dataset.lockedMode = recipientMode;
+  }
   attentionSetupFields();
 }
 
@@ -162,9 +172,9 @@ function renderSharedEquipment() {
   }
   rows.forEach((item, index) => {
     const row = document.createElement("div");
-    row.className = "equipment-row";
+    row.className = "equipment-row equipment-row-edit";
     row.innerHTML = `
-      <div class="equipment-row-top">
+      <div class="equipment-card-topline">
         <label class="toggle-label compact-toggle">
           <input type="checkbox" data-shared-field="enabled" data-index="${index}" ${
             Number(item.enabled) === 0 ? "" : "checked"
@@ -173,21 +183,20 @@ function renderSharedEquipment() {
         </label>
         <button class="btn btn-danger-ghost btn-small" type="button" data-remove-shared="${index}">Remove</button>
       </div>
-      <div class="equipment-main">
-        <label class="equipment-name">
+      <div class="equipment-card-center">
+        <label class="equipment-card-field">
           <span class="field-caption">Equipment</span>
           <input type="text" data-shared-field="name" data-index="${index}" value="${String(item.name || "").replace(/"/g, "&quot;")}" />
         </label>
-        <label class="equipment-goal">
-          <span class="field-caption">Goal</span>
+        <p class="equipment-card-price">$${Number(item.goal || 0).toFixed(0)}</p>
+        <label class="equipment-card-field equipment-card-goal">
+          <span class="field-caption">Set Goal</span>
           <div class="goal-input-wrap">
             <span>$</span>
             <input type="number" min="0" step="1" data-shared-field="goal" data-index="${index}" value="${Number(item.goal || 0)}" />
           </div>
         </label>
-      </div>
-      <div class="equipment-footer">
-        <div class="equipment-meta">
+        <div class="equipment-card-meta">
           <span class="meta-pill">${item.category || "General"}</span>
           <span class="meta-pill meta-pill-muted">Typical price: ${item.price_range || item.priceRange || "Not set"}</span>
         </div>
@@ -428,8 +437,6 @@ async function loadDashboard() {
 teamForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const chosenSport = String(teamForm.teamSport.value || "").trim().toLowerCase();
-  const chosenRecipientMode =
-    String(teamForm.querySelector('input[name="recipientMode"]:checked')?.value || "coach").trim().toLowerCase();
   if (!chosenSport) {
     setFeedback("team-feedback", "Please select a sport before saving.", true);
     teamForm.teamSport.classList.add("attention-field");
@@ -442,8 +449,7 @@ teamForm?.addEventListener("submit", async (event) => {
         body: JSON.stringify({
           name: teamForm.teamName.value,
           location: teamForm.teamLocation.value,
-          sport: chosenSport,
-          recipientMode: chosenRecipientMode
+          sport: chosenSport
         })
       });
       await loadBackendDashboard();
@@ -742,22 +748,57 @@ sharedEquipmentSaveButton?.addEventListener("click", async () => {
 
 coachSetupPayoutsButton?.addEventListener("click", async () => {
   if (state.mode !== "backend" || !state.coach) return;
+  let newWindow = null;
   try {
-    const newWindow = window.open("", "_blank", "noopener");
+    newWindow = window.open("", "_blank");
     if (newWindow) {
-      newWindow.document.write(
-        "<!doctype html><title>Redirecting…</title><body style='font-family:Arial,sans-serif;padding:24px'>Redirecting to Stripe…</body>"
-      );
+      newWindow.document.open();
+      newWindow.document.write(`
+        <!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Redirecting To Stripe</title>
+            <style>
+              body {
+                margin: 0;
+                min-height: 100vh;
+                display: grid;
+                place-items: center;
+                font-family: Nunito, Arial, sans-serif;
+                background: #f4f8ff;
+                color: #14213d;
+              }
+              .wrap {
+                text-align: center;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="wrap">
+              <h2>Redirecting to Stripe...</h2>
+              <p>You can return to Gridiron Give after team setup is complete.</p>
+            </div>
+          </body>
+        </html>
+      `);
       newWindow.document.close();
     }
     const response = await apiRequest("/onboard-coach", {
       method: "POST",
       body: JSON.stringify({ coachId: state.coach.id })
     });
-    if (newWindow) newWindow.location.assign(response.url);
+    if (!response?.url) {
+      throw new Error("Stripe onboarding link was not returned.");
+    }
+    if (newWindow && !newWindow.closed) newWindow.location.replace(response.url);
+    else window.open(response.url, "_blank");
     await loadBackendDashboard();
     renderCoachPayoutSection();
   } catch (error) {
+    try {
+      if (newWindow && !newWindow.closed) newWindow.close();
+    } catch {}
     showAction(error.message || "Could not start coach Stripe setup.", true);
   }
 });

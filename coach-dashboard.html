@@ -42,7 +42,7 @@
           <h1 class="dashboard-title">Manager Dashboard</h1>
           <p class="dashboard-copy">Update your team profile and manage your athlete roster.</p>
 
-          <details class="coach-collapsible">
+          <details class="coach-collapsible" open>
             <summary class="coach-collapsible-summary">
               <span class="section-title">Team Profile Setup</span>
               <span class="coach-collapsible-arrow" aria-hidden="true">▾</span>
@@ -68,7 +68,7 @@
                     <option value="baseball">Baseball</option>
                   </select>
                 </label>
-                <fieldset class="choice-group">
+                <fieldset class="choice-group" id="recipient-mode-group">
                   <legend>Payout Recipient</legend>
                   <label class="choice-card is-recommended">
                     <input type="radio" name="recipientMode" value="coach" />

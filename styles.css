@@ -14,8 +14,8 @@
   --shadow: 0 18px 42px rgba(15, 40, 80, 0.08);
   --shadow-sm: 0 8px 20px rgba(15, 40, 80, 0.08);
   --radius: 20px;
-  --font-body: "Nunito", "Avenir Next", "Segoe UI", sans-serif;
-  --font-display: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Nunito", "Segoe UI", sans-serif;
+  --font-display: "Nunito", "Segoe UI", sans-serif;
 }
 
 html {
@@ -393,8 +393,8 @@ h1 {
   max-width: 14ch;
   font-weight: 900;
   font-size: clamp(2rem, 5vw, 3.5rem);
-  line-height: 0.98;
-  letter-spacing: -0.04em;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
 }
 
 .hero-copy {
@@ -998,15 +998,16 @@ a.table-name-link {
 
 .progress-track {
   width: 100%;
-  height: 12px;
+  height: 14px;
   border-radius: 999px;
-  background: #e6edf8;
+  background: #eef2ff;
   overflow: hidden;
+  border: 2px solid rgba(50, 61, 92, 0.32);
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #0f4db8, #2f80ff);
+  background: linear-gradient(90deg, #75db49, #84df59);
 }
 
 .player-top {
@@ -1113,27 +1114,144 @@ a.table-name-link {
 
 .equipment-grid {
   display: grid;
-  gap: 10px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .equipment-row {
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 12px 14px;
-  background: #fcfdff;
+  border-radius: 26px;
+  padding: 18px;
+  background: #dfe7ff;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .equipment-row.is-disabled {
   opacity: 0.8;
-  background: #f7f9f8;
+  background: #e8edf8;
 }
 
 .equipment-row-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.equipment-card-center {
+  text-align: center;
+  display: grid;
+  gap: 14px;
+}
+
+.equipment-card-title {
+  margin: 0;
+  font-size: clamp(1.05rem, 2vw, 1.6rem);
+  font-weight: 900;
+  font-style: italic;
+  color: #114fb9;
+  text-transform: uppercase;
+}
+
+.equipment-card-price {
+  margin: 0;
+  font-size: clamp(1.85rem, 4vw, 3.1rem);
+  font-weight: 900;
+  color: #101010;
+}
+
+.equipment-card-progress-copy {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-style: italic;
+  color: #24364c;
+}
+
+.equipment-card-cta {
+  width: 100%;
+}
+
+.equipment-card-clickable {
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+}
+
+.equipment-card-clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+  background: #d5e0ff;
+}
+
+.equipment-card-general {
+  grid-column: 1 / -1;
+  min-height: 0;
+  padding: 22px;
+}
+
+.equipment-card-general .equipment-card-price {
+  font-size: clamp(2.2rem, 4vw, 3.6rem);
+}
+
+.equipment-card-general-copy {
+  margin: 0;
+  color: #35506f;
+  font-size: 1rem;
+}
+
+.equipment-row-edit {
+  min-height: 260px;
+}
+
+.equipment-card-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.equipment-card-field {
+  display: grid;
+  gap: 8px;
+}
+
+.equipment-card-field input[type="text"] {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.equipment-card-goal {
+  justify-self: center;
+}
+
+.equipment-card-goal .goal-input-wrap {
+  min-width: 120px;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.equipment-card-goal .goal-input-wrap input[type="number"] {
+  width: 72px;
+  text-align: center;
+}
+
+.equipment-card-meta {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.equipment-card-progress {
+  display: grid;
+  gap: 10px;
 }
 
 .toggle-label {
@@ -1677,6 +1795,10 @@ a.table-name-link {
     grid-template-columns: 1fr;
   }
 
+  .equipment-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .equipment-footer {
     flex-direction: column;
     align-items: flex-start;
@@ -1774,6 +1896,10 @@ a.table-name-link {
   .card {
     padding: 14px;
     border-radius: 16px;
+  }
+
+  .equipment-grid {
+    grid-template-columns: 1fr;
   }
 
   .btn {

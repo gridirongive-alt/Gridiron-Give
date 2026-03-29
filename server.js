@@ -1803,15 +1803,13 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
 
 app.patch("/api/teams/:teamId", (req, res) => {
   const { teamId } = req.params;
-  const { name, location, sport, recipientMode } = req.body || {};
+  const { name, location, sport } = req.body || {};
   const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId);
   if (!team) return res.status(404).json({ error: "Team not found." });
   let nextSport;
   let nextName;
   let nextLocation;
-  const nextRecipientMode = String(recipientMode || team.recipient_mode || "coach").trim().toLowerCase() === "player"
-    ? "player"
-    : "coach";
+  const nextRecipientMode = String(team.recipient_mode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
     nextSport = sanitizeSingleLineText(sport ?? team.sport ?? "").toLowerCase();
     nextName = assertSafeName(name || team.name, "Team Name");

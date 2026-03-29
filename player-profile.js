@@ -260,20 +260,18 @@ function renderGeneralDonationCard() {
   const remaining = totalRemaining(current);
   const progress = percent(current.raisedTotal, current.goalTotal);
   generalDonationCard.innerHTML = `
-    <div class="equipment-row equipment-row-general">
-      <div class="equipment-row-top">
-        <strong>General Donation</strong>
-        <span class="meta-pill meta-pill-muted">Covers multiple items</span>
-      </div>
-      <p class="subtle-copy">${money(current.raisedTotal)} raised of ${money(current.goalTotal)}</p>
-      <div class="progress-track">
-        <div class="progress-fill" style="width:${progress}%"></div>
-      </div>
-      <div class="equipment-actions section-top-gap-sm">
-        <span class="subtle-copy">Remaining overall: ${money(remaining)}</span>
-        <button class="btn btn-money" type="button" id="general-donate-button">
-          Donate to Entire Goal
-        </button>
+    <div class="equipment-row equipment-card-general equipment-card-clickable" id="general-donate-button">
+      <div class="equipment-card-center">
+        <p class="equipment-card-title">General Donation</p>
+        <p class="equipment-card-price">${money(current.goalTotal)}</p>
+        <p class="equipment-card-general-copy">Covers multiple items and fills the highest remaining goals first.</p>
+        <div class="equipment-card-progress">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${progress}%"></div>
+          </div>
+          <p class="equipment-card-progress-copy">${money(current.raisedTotal)} of ${money(current.goalTotal)} raised</p>
+        </div>
+        <p class="subtle-copy">Remaining overall: ${money(remaining)}</p>
       </div>
     </div>
   `;
@@ -293,21 +291,19 @@ function renderEquipment() {
     const progress = percent(item.raised, item.goal);
     const remaining = Math.max(0, Number(item.goal || 0) - Number(item.raised || 0));
     const row = document.createElement("div");
-    row.className = "equipment-row";
+    row.className = "equipment-row equipment-card-clickable";
+    row.dataset.eqIndex = String(item.index);
     row.innerHTML = `
-      <div class="equipment-row-top">
-        <strong>${item.name}</strong>
-        <span class="meta-pill meta-pill-muted">${item.category || "General"}</span>
-      </div>
-      <p class="subtle-copy">${money(item.raised)} raised of ${money(item.goal)}</p>
-      <div class="progress-track">
-        <div class="progress-fill" style="width:${progress}%"></div>
-      </div>
-      <div class="equipment-actions section-top-gap-sm">
-        <span class="subtle-copy">Remaining: ${money(remaining)}</span>
-        <button class="btn btn-money" type="button" data-eq-index="${item.index}">
-          Donate to ${item.name}
-        </button>
+      <div class="equipment-card-center">
+        <p class="equipment-card-title">${item.name}</p>
+        <p class="equipment-card-price">${money(item.goal)}</p>
+        <div class="equipment-card-progress">
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${progress}%"></div>
+          </div>
+          <p class="equipment-card-progress-copy">${money(item.raised)} of ${money(item.goal)} raised</p>
+        </div>
+        <p class="subtle-copy">Remaining: ${money(remaining)}</p>
       </div>
     `;
     equipmentGrid.appendChild(row);
@@ -443,7 +439,7 @@ async function refreshAfterDonation() {
 equipmentGrid?.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
-  const eqIndex = target.dataset.eqIndex;
+  const eqIndex = target.closest("[data-eq-index]")?.dataset.eqIndex;
   if (eqIndex === undefined) return;
   openDonationForm(Number(eqIndex));
 });
@@ -451,7 +447,7 @@ equipmentGrid?.addEventListener("click", (event) => {
 generalDonationCard?.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof HTMLElement)) return;
-  if (target.id !== "general-donate-button") return;
+  if (!target.closest("#general-donate-button")) return;
   openGeneralDonationForm();
 });
 
