@@ -219,14 +219,14 @@ function renderTeamDonationPanel() {
   const coachMode = String(state.team?.recipient_mode || "coach") === "coach";
   teamDonateCard.hidden = !coachMode;
   if (!coachMode) return;
-  teamDonateCopy.textContent = "Select a shared team item and then choose which player you are supporting. Team general donations split evenly across the roster.";
+  teamDonateCopy.textContent = "Choose a team gift or support one player through a shared item.";
   const teamProgress = progress(state.totalTeamRaised, state.totalTeamGoal);
   teamGeneralDonationCard.innerHTML = `
     <div class="equipment-row equipment-card-general equipment-card-clickable" id="team-general-donate-button">
       <div class="equipment-card-center">
         <p class="equipment-card-title">General Donation</p>
         <p class="equipment-card-price">${money(state.totalTeamGoal)}</p>
-        <p class="equipment-card-general-copy">Supports every player on this team and splits the donation evenly across the roster.</p>
+        <p class="equipment-card-general-copy">Supports the full roster and splits your gift evenly across every player.</p>
         <div class="equipment-card-progress">
           <div class="progress-track"><div class="progress-fill" style="width:${teamProgress}%"></div></div>
           <p class="equipment-card-progress-copy">${money(state.totalTeamRaised)} of ${money(state.totalTeamGoal)} raised</p>
@@ -247,7 +247,7 @@ function renderTeamDonationPanel() {
         <p class="equipment-card-price">${money(item.goal)}</p>
         <div class="equipment-card-progress">
           <div class="progress-track"><div class="progress-fill" style="width:0%"></div></div>
-          <p class="equipment-card-progress-copy">Donors choose a player in the next step</p>
+          <p class="equipment-card-progress-copy">Choose a player in the next step</p>
         </div>
       </div>
     `;

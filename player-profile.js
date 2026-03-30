@@ -264,21 +264,20 @@ async function ensureStripeConfig() {
 function renderGeneralDonationCard() {
   const current = currentPlayer();
   if (!current || !generalDonationCard) return;
-  const remaining = totalRemaining(current);
   const progress = percent(current.raisedTotal, current.goalTotal);
   generalDonationCard.innerHTML = `
     <div class="equipment-row equipment-card-general equipment-card-clickable" id="general-donate-button">
       <div class="equipment-card-center">
         <p class="equipment-card-title">General Donation</p>
         <p class="equipment-card-price">${money(current.goalTotal)}</p>
-        <p class="equipment-card-general-copy">Covers multiple items and fills the highest remaining goals first.</p>
+        <p class="equipment-card-general-copy">Supports this athlete across every active item.</p>
         <div class="equipment-card-progress">
           <div class="progress-track">
             <div class="progress-fill" style="width:${progress}%"></div>
           </div>
           <p class="equipment-card-progress-copy">${money(current.raisedTotal)} of ${money(current.goalTotal)} raised</p>
         </div>
-        <p class="subtle-copy">Remaining overall: ${money(remaining)}</p>
+        <button class="btn btn-money equipment-card-cta" type="button">Give To Athlete</button>
       </div>
     </div>
   `;
@@ -296,7 +295,6 @@ function renderEquipment() {
 
   list.forEach((item) => {
     const progress = percent(item.raised, item.goal);
-    const remaining = Math.max(0, Number(item.goal || 0) - Number(item.raised || 0));
     const row = document.createElement("div");
     row.className = "equipment-row equipment-card-clickable";
     row.dataset.eqIndex = String(item.index);
@@ -310,7 +308,6 @@ function renderEquipment() {
           </div>
           <p class="equipment-card-progress-copy">${money(item.raised)} of ${money(item.goal)} raised</p>
         </div>
-        <p class="subtle-copy">Remaining: ${money(remaining)}</p>
       </div>
     `;
     equipmentGrid.appendChild(row);

@@ -2391,9 +2391,10 @@ app.get("/api/public/teams/:teamId", (req, res) => {
     String(team.recipient_mode || "coach") === "coach"
       ? teamEquipmentTemplateRows(team.id)
       : [];
+  const activeTeamEquipment = teamEquipment.filter((item) => Number(item.enabled) !== 0);
   const totalTeamGoal =
     String(team.recipient_mode || "coach") === "coach"
-      ? teamEquipment.reduce((sum, item) => sum + Number(item.goal || 0), 0) * players.length
+      ? activeTeamEquipment.reduce((sum, item) => sum + Number(item.goal || 0), 0) * players.length
       : players.reduce((sum, item) => sum + Number(item.goalTotal || 0), 0);
   const totalTeamRaised = players.reduce((sum, item) => sum + Number(item.raisedTotal || 0), 0);
   return res.json({ team: { ...team, coach_name: coach?.name || "", stripe_account_id: String(coach?.stripe_account_id || "") }, players, teamEquipment, totalTeamGoal, totalTeamRaised });
