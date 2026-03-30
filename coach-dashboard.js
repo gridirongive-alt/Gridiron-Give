@@ -20,6 +20,11 @@ const coachStripeDashboardButton = document.getElementById("coach-open-stripe-da
 const coachPayoutActions = document.getElementById("coach-payout-actions");
 const coachPayoutCopy = document.getElementById("coach-payout-copy");
 const recipientModeGroup = document.getElementById("recipient-mode-group");
+const coachModalBackdrop = document.getElementById("coach-modal-backdrop");
+const coachStripeSetupModal = document.getElementById("coach-stripe-setup-modal");
+const coachStripeSetupScroll = document.getElementById("coach-stripe-setup-scroll");
+const continueCoachStripeSetupButton = document.getElementById("continue-coach-stripe-setup");
+const coachModalCloseButtons = [...document.querySelectorAll("[data-coach-modal-close]")];
 const sharedEquipmentCard = document.getElementById("shared-equipment-card");
 const sharedEquipmentList = document.getElementById("shared-equipment-list");
 const sharedEquipmentAddButton = document.getElementById("shared-equipment-add");
@@ -58,6 +63,34 @@ function showAction(message, isError = false) {
   if (typeof window.showActionMessage === "function") {
     window.showActionMessage(message, { isError });
   }
+}
+
+function openCoachModal() {
+  if (!coachModalBackdrop || !coachStripeSetupModal) return;
+  coachModalBackdrop.hidden = false;
+  coachStripeSetupModal.hidden = false;
+}
+
+function closeCoachModal() {
+  if (!coachModalBackdrop || !coachStripeSetupModal) return;
+  coachModalBackdrop.hidden = true;
+  coachStripeSetupModal.hidden = true;
+}
+
+function evaluateCoachStripeSetupGate() {
+  if (!coachStripeSetupScroll || !continueCoachStripeSetupButton) return;
+  if (coachStripeSetupScroll.scrollHeight <= coachStripeSetupScroll.clientHeight + 8) {
+    continueCoachStripeSetupButton.disabled = false;
+    return;
+  }
+  const threshold = coachStripeSetupScroll.scrollHeight - coachStripeSetupScroll.clientHeight - 8;
+  continueCoachStripeSetupButton.disabled = coachStripeSetupScroll.scrollTop < Math.max(0, threshold);
+}
+
+function resetCoachStripeSetupGate() {
+  if (coachStripeSetupScroll) coachStripeSetupScroll.scrollTop = 0;
+  if (continueCoachStripeSetupButton) continueCoachStripeSetupButton.disabled = false;
+  evaluateCoachStripeSetupGate();
 }
 
 function showCsvProcessing() {
@@ -748,6 +781,13 @@ sharedEquipmentSaveButton?.addEventListener("click", async () => {
 
 coachSetupPayoutsButton?.addEventListener("click", async () => {
   if (state.mode !== "backend" || !state.coach) return;
+  resetCoachStripeSetupGate();
+  openCoachModal();
+});
+
+continueCoachStripeSetupButton?.addEventListener("click", async () => {
+  if (state.mode !== "backend" || !state.coach) return;
+  closeCoachModal();
   let newWindow = null;
   try {
     newWindow = window.open("", "_blank");
@@ -802,6 +842,20 @@ coachSetupPayoutsButton?.addEventListener("click", async () => {
     showAction(error.message || "Could not start coach Stripe setup.", true);
   }
 });
+
+coachModalCloseButtons.forEach((button) => {
+  button.addEventListener("click", closeCoachModal);
+});
+
+coachModalBackdrop?.addEventListener("click", (event) => {
+  if (event.target === coachModalBackdrop) closeCoachModal();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeCoachModal();
+});
+
+coachStripeSetupScroll?.addEventListener("scroll", evaluateCoachStripeSetupGate);
 
 coachStripeDashboardButton?.addEventListener("click", async () => {
   if (state.mode !== "backend" || !state.coach) return;

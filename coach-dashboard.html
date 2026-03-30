@@ -227,6 +227,58 @@
       </section>
     </div>
 
+    <div class="modal-backdrop" id="coach-modal-backdrop" hidden>
+      <section
+        class="modal"
+        id="coach-stripe-setup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="coach-stripe-setup-title"
+        hidden
+      >
+        <div class="modal-header">
+          <h2 id="coach-stripe-setup-title">Important: Read Before Connecting Team Stripe</h2>
+          <button class="icon-btn" type="button" aria-label="Close modal" data-coach-modal-close>&times;</button>
+        </div>
+        <div class="stripe-setup-scroll section-top-gap-sm" id="coach-stripe-setup-scroll">
+          <p class="subtle-copy">
+            Stripe Express will verify your identity and bank account so your team can receive donations on behalf of players.
+          </p>
+          <div class="welcome-overview-grid section-top-gap-sm">
+            <article class="welcome-overview-card">
+              <h3>Use Your Real Information</h3>
+              <p>Enter your legal name, address, date of birth, and banking details exactly as Stripe requests.</p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Choose The Correct Industry</h3>
+              <p>
+                If Stripe asks for an industry, choose <strong><u>Charities or social service organizations</u></strong>.
+              </p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Do Not Change The Business Framing</h3>
+              <p>Do not rewrite the business description or switch the account into a different setup direction during onboarding.</p>
+            </article>
+            <article class="welcome-overview-card">
+              <h3>Team Payout Mode</h3>
+              <p>
+                In this setup, you receive donations on behalf of players and you control the shared item pricing for the team.
+              </p>
+            </article>
+          </div>
+          <p class="subtle-copy section-top-gap-sm">
+            Continue only when you are ready to finish the full Stripe Express setup in one pass.
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" type="button" data-coach-modal-close>Cancel</button>
+          <button class="btn btn-money" type="button" id="continue-coach-stripe-setup" disabled>
+            Continue To Stripe
+          </button>
+        </div>
+      </section>
+    </div>
+
     <script src="./data.js"></script>
     <script src="./action-modal.js"></script>
     <script src="./header-session.js"></script>

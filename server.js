@@ -389,8 +389,8 @@ async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId, 
     <ol>
       <li>Sign up with your Player ID and create your password.</li>
       <li>${coachManaged ? "Upload your photo and publish your page so donors can find you." : "Set up your equipment list and donation goal amounts."}</li>
-      <li>${coachManaged ? "Your coach manages shared equipment pricing and receives donations on behalf of players." : "Turn off items you do not need so donors only see relevant gear."}</li>
-      <li>${coachManaged ? "You do not need to connect Stripe personally for this team setup." : "Save your goals to publish your page for donors."}</li>
+      <li>${coachManaged ? "Your coach manages shared equipment pricing and receives donations on behalf of players, so you do not set item prices yourself." : "Turn off items you do not need so donors only see relevant gear."}</li>
+      <li>${coachManaged ? "You do not need to connect Stripe personally for this team setup." : "Save your goals to publish your page for donors and complete your own Stripe setup."}</li>
     </ol>
     ${
       coachManaged
@@ -409,7 +409,7 @@ async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId, 
     </ol>
     <p><strong>Important:</strong> After Stripe setup is complete, come back to your dashboard and confirm it shows <strong>Payment Setup Complete</strong>.</p>`
     }
-    <p>Tip: Ask your coach for realistic target prices so your totals are accurate for donors.</p>
+    <p>${coachManaged ? "Your coach will set the shared item prices for the team." : "Tip: Ask your coach for realistic target prices so your totals are accurate for donors."}</p>
   `;
   if (!transporter) {
     // eslint-disable-next-line no-console
@@ -425,12 +425,17 @@ async function sendRosterInviteEmail({ to, teamName, coachName, playerPublicId, 
   return { sent: true };
 }
 
-async function sendCoachWelcomeEmail({ to, coachName, teamName }) {
+async function sendCoachWelcomeEmail({ to, coachName, teamName, recipientMode = "coach" }) {
   const setupLink = publicSiteUrl;
+  const coachManaged = String(recipientMode || "coach") === "coach";
   const html = `
     <h2>Welcome to Gridiron Give, ${coachName}</h2>
     <p>Your team account for <strong>${teamName}</strong> is ready.</p>
     <p>Go to your dashboard: <a href="${setupLink}">${setupLink}</a></p>
+    <p><strong>Payout setup selected:</strong> ${
+      coachManaged ? "Coach receives donations" : "Players receive donations individually"
+    }</p>
+    <p><strong>Important:</strong> This payout recipient choice is locked after signup so your team setup stays consistent.</p>
     <hr />
     <h3>Quick Start</h3>
     <ol>
@@ -447,10 +452,23 @@ async function sendCoachWelcomeEmail({ to, coachName, teamName }) {
     </ul>
     <h3>Team Rollout Tips</h3>
     <ul>
-      <li>Share expected equipment price ranges with players before they set goals.</li>
-      <li>Ask players to remove non-needed gear items from public view.</li>
+      <li>${coachManaged ? "Set one clean shared pricing list so every player page stays consistent." : "Share expected equipment price ranges with players before they set goals."}</li>
+      <li>${coachManaged ? "Let players know they do not connect Stripe and do not set prices when the team receives donations." : "Ask players to remove non-needed gear items from public view."}</li>
       <li>Review player pages before sharing with donors.</li>
     </ul>
+    ${
+      coachManaged
+        ? `<h3>Stripe Team Setup</h3>
+    <ol>
+      <li>From your coach dashboard, click <strong>Connect Team Stripe</strong>.</li>
+      <li>Use your real legal and banking information exactly as Stripe requests.</li>
+      <li>If Stripe asks for an industry, choose <strong><u>Charities or social service organizations</u></strong>.</li>
+      <li>Do not change Stripe's business framing, description, or account-type direction during onboarding.</li>
+      <li>Finish every required Stripe step before returning to Gridiron Give.</li>
+    </ol>
+    <p><strong>Important:</strong> In coach payout mode, you collect donations on behalf of players and control the shared equipment pricing for the team.</p>`
+        : `<p><strong>Important:</strong> In player payout mode, each player must complete their own Stripe onboarding and set their own fundraising prices.</p>`
+    }
   `;
   if (!transporter) {
     // eslint-disable-next-line no-console
@@ -1714,7 +1732,8 @@ app.post("/api/coaches/signup", async (req, res) => {
     const delivery = await sendCoachWelcomeEmail({
       to: safeEmail,
       coachName: safeName,
-      teamName: teamNameValue
+      teamName: teamNameValue,
+      recipientMode: payoutMode
     });
     welcomeEmailSent = Boolean(delivery?.sent);
     welcomeEmailError = delivery?.reason ? String(delivery.reason) : "";

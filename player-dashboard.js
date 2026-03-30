@@ -373,11 +373,26 @@ function buildChangeSummary(currentEquipment, nextEquipment) {
 function render() {
   const current = refreshPlayer();
   if (!current) return;
+  const coachManaged = String(current.teamRecipientMode || "coach") === "coach";
   if (addEquipmentButton) {
-    addEquipmentButton.hidden = String(current.teamRecipientMode || "coach") === "coach";
+    addEquipmentButton.hidden = coachManaged;
   }
   nameHeading.textContent = `${current.firstName} ${current.lastName} Dashboard`;
   teamCopy.textContent = state.team?.name || "";
+  if (sportCopy) {
+    sportCopy.textContent = coachManaged
+      ? `Sport: ${state.team?.sport || ""} • Your coach controls shared pricing and receives donations for this team.`
+      : `Sport: ${state.team?.sport || ""} • You set your own equipment prices and receive donations directly.`;
+  }
+  if (equipmentFeedback) {
+    if (coachManaged) {
+      equipmentFeedback.textContent = `${current.coachName || "Your coach"} sets the shared item prices for this team and receives donations on behalf of players. You can still upload your photo and publish your page.`;
+      equipmentFeedback.classList.remove("is-error");
+    } else {
+      equipmentFeedback.textContent = "";
+      equipmentFeedback.classList.remove("is-error");
+    }
+  }
   renderStats(current);
   renderPublishButton(current);
   renderPayoutButton(current);

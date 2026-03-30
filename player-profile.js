@@ -9,6 +9,8 @@ const donorNameHeading = document.getElementById("donor-name-heading");
 const donorTeamCopy = document.getElementById("donor-team-copy");
 const donorStats = document.getElementById("donor-stats");
 const playerImage = document.getElementById("donor-player-image");
+const playerPlaceholder = document.getElementById("donor-player-placeholder");
+const playerInitials = document.getElementById("donor-player-initials");
 const playerTeam = document.getElementById("donor-player-team");
 const equipmentGrid = document.getElementById("donor-equipment-grid");
 const generalDonationCard = document.getElementById("general-donation-card");
@@ -136,11 +138,16 @@ function renderProfileInfo() {
   const current = currentPlayer();
   if (!current) return;
   playerTeam.textContent = state.team?.name || "";
+  if (playerInitials) {
+    playerInitials.textContent = `${String(current.firstName || "").slice(0, 1)}${String(current.lastName || "").slice(0, 1)}`.toUpperCase() || "GG";
+  }
   if (current.imageDataUrl) {
     playerImage.src = current.imageDataUrl;
     playerImage.hidden = false;
+    if (playerPlaceholder) playerPlaceholder.hidden = true;
   } else {
     playerImage.hidden = true;
+    if (playerPlaceholder) playerPlaceholder.hidden = false;
   }
 }
 

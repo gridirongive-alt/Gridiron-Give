@@ -211,8 +211,8 @@ function applyCoachRecipientMode(mode) {
   if (coachSetupModeCopy) {
     coachSetupModeCopy.textContent =
       safeMode === "coach"
-        ? "Recommended for youth teams. The coach connects Stripe once and receives donations on behalf of players."
-        : "Each player will be responsible for completing Stripe onboarding and receiving donations personally.";
+        ? "Recommended for youth teams. The coach connects Stripe once, receives donations on behalf of players, and this payout choice is locked after signup."
+        : "Each player will be responsible for completing Stripe onboarding and receiving donations personally. This payout choice is locked after signup.";
   }
 }
 
