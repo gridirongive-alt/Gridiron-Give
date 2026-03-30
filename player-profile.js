@@ -7,6 +7,9 @@ const checkoutStatus = params.get("checkout");
 
 const donorNameHeading = document.getElementById("donor-name-heading");
 const donorTeamCopy = document.getElementById("donor-team-copy");
+const donorTeamLink = document.getElementById("donor-team-link");
+const donorTeamLogoWrap = document.getElementById("donor-team-logo-wrap");
+const donorTeamLogo = document.getElementById("donor-team-logo");
 const donorStats = document.getElementById("donor-stats");
 const playerImage = document.getElementById("donor-player-image");
 const playerPlaceholder = document.getElementById("donor-player-placeholder");
@@ -80,6 +83,7 @@ function normalizeBackendPlayer(row) {
     id: row.id,
     teamId: row.team_id,
     teamName: row.team_name || "",
+    teamLogoDataUrl: row.team_logo_data_url || "",
     firstName: row.first_name,
     lastName: row.last_name,
     imageDataUrl: row.image_data_url || "",
@@ -103,7 +107,11 @@ async function loadPlayer() {
     const data = await apiRequest(`/api/public/players/${encodeURIComponent(publicPlayerId)}`);
     mode = "backend";
     state.player = normalizeBackendPlayer(data.player);
-    state.team = { id: data.player.team_id, name: data.player.team_name || "" };
+    state.team = {
+      id: data.player.team_id,
+      name: data.player.team_name || "",
+      logoDataUrl: data.player.team_logo_data_url || ""
+    };
     return;
   } catch {}
 
@@ -127,6 +135,15 @@ function renderTop() {
   const pct = percent(current.raisedTotal, current.goalTotal);
   if (donorNameHeading) donorNameHeading.textContent = `${current.firstName} ${current.lastName}`;
   if (donorTeamCopy) donorTeamCopy.textContent = state.team?.name || "Team";
+  if (donorTeamLink) {
+    donorTeamLink.href = state.team?.id ? `/team-profile.html?teamId=${encodeURIComponent(state.team.id)}` : "/index.html";
+  }
+  if (donorTeamLogoWrap && donorTeamLogo) {
+    const logoDataUrl = String(state.team?.logoDataUrl || current.teamLogoDataUrl || "");
+    donorTeamLogoWrap.hidden = !logoDataUrl;
+    if (logoDataUrl) donorTeamLogo.src = logoDataUrl;
+    else donorTeamLogo.removeAttribute("src");
+  }
   donorStats.innerHTML = `
     <div class="stat-pill"><span>${money(current.raisedTotal)}</span><small>Raised</small></div>
     <div class="stat-pill"><span>${money(current.goalTotal)}</span><small>Goal</small></div>
@@ -367,45 +384,20 @@ async function submitDonation(formData) {
   }
 
   if (mode === "backend") {
-    if (current.stripeAccountId) {
-      const config = await ensureStripeConfig();
-      if (!config?.configured) {
-        throw new Error("Stripe checkout is not configured yet.");
-      }
-      const coverFees = Boolean(formData.get("coverFees"));
-      const checkout = computeCheckoutAmounts(donationAmount, coverFees);
-      const response = await apiRequest("/create-checkout-session", {
-        method: "POST",
-        body: JSON.stringify({
-          stripe_account_id: current.stripeAccountId,
-          amount: dollarsToCents(donationAmount),
-          coverFees,
-          playerId: current.id,
-          publicPlayerId,
-          donationType: selectedDonationMode,
-          equipmentItemId:
-            selectedDonationMode === "equipment" ? current.equipment[selectedIndex]?.id || null : null,
-          donorName: formData.get("donorName"),
-          donorEmail: formData.get("donorEmail"),
-          donorMessage: formData.get("donorMessage"),
-          anonymous: Boolean(formData.get("anonymous")),
-        }),
-      });
-      if (!response?.url) {
-        throw new Error("Stripe checkout did not return a redirect URL.");
-      }
-      return {
-        redirectUrl: response.url,
-        amount: centsToDollars(response.totalAmount || checkout.checkoutTotalCents),
-        athleteAmount: centsToDollars(response.playerAmount || checkout.athleteAmountCents),
-        externalCheckout: true,
-      };
+    const config = await ensureStripeConfig();
+    if (!config?.configured) {
+      throw new Error("Stripe checkout is not configured yet.");
     }
-
-    return apiRequest("/api/donations", {
+    const coverFees = Boolean(formData.get("coverFees"));
+    const checkout = computeCheckoutAmounts(donationAmount, coverFees);
+    const response = await apiRequest("/create-checkout-session", {
       method: "POST",
       body: JSON.stringify({
+        stripe_account_id: current.stripeAccountId,
+        amount: dollarsToCents(donationAmount),
+        coverFees,
         playerId: current.id,
+        publicPlayerId,
         donationType: selectedDonationMode,
         equipmentItemId:
           selectedDonationMode === "equipment" ? current.equipment[selectedIndex]?.id || null : null,
@@ -413,9 +405,17 @@ async function submitDonation(formData) {
         donorEmail: formData.get("donorEmail"),
         donorMessage: formData.get("donorMessage"),
         anonymous: Boolean(formData.get("anonymous")),
-        amount: donationAmount,
       }),
     });
+    if (!response?.url) {
+      throw new Error("Stripe checkout did not return a redirect URL.");
+    }
+    return {
+      redirectUrl: response.url,
+      amount: centsToDollars(response.totalAmount || checkout.checkoutTotalCents),
+      athleteAmount: centsToDollars(response.playerAmount || checkout.athleteAmountCents),
+      externalCheckout: true,
+    };
   }
 
   return api.recordDonation({
@@ -434,7 +434,11 @@ async function refreshAfterDonation() {
   if (mode === "backend") {
     const data = await apiRequest(`/api/public/players/${encodeURIComponent(publicPlayerId)}`);
     state.player = normalizeBackendPlayer(data.player);
-    state.team = { id: data.player.team_id, name: data.player.team_name || "" };
+    state.team = {
+      id: data.player.team_id,
+      name: data.player.team_name || "",
+      logoDataUrl: data.player.team_logo_data_url || ""
+    };
     return;
   }
   state.player = api.getPlayerByInternalId(state.player?.id);

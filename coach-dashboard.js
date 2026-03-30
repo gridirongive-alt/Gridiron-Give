@@ -3,6 +3,10 @@ const session = api.getSession();
 if (!session || session.role !== "coach") window.location.href = "/index.html";
 
 const teamForm = document.getElementById("team-form");
+const teamLogoUpload = document.getElementById("team-logo-upload");
+const clearTeamLogoButton = document.getElementById("clear-team-logo");
+const teamLogoPreview = document.getElementById("team-logo-preview");
+const teamLogoImage = document.getElementById("team-logo-image");
 const manualPlayerForm = document.getElementById("manual-player-form");
 const rosterBody = document.getElementById("roster-body");
 const processCsvButton = document.getElementById("process-csv");
@@ -41,6 +45,7 @@ let state = {
   transactions: []
 };
 let csvPreviewRows = [];
+let pendingTeamLogoDataUrl = "";
 
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
@@ -133,6 +138,8 @@ function updateTeamForm() {
   teamForm.teamName.value = state.team.name || "";
   teamForm.teamLocation.value = state.team.location || "";
   teamForm.teamSport.value = state.team.sport || "";
+  pendingTeamLogoDataUrl = String(state.team.logo_data_url || "");
+  renderTeamLogoPreview();
   const recipientMode = String(state.team.recipient_mode || state.team.recipientMode || "coach");
   const recipientInputs = [...teamForm.querySelectorAll('input[name="recipientMode"]')];
   recipientInputs.forEach((input) => {
@@ -146,6 +153,26 @@ function updateTeamForm() {
     recipientModeGroup.dataset.lockedMode = recipientMode;
   }
   attentionSetupFields();
+}
+
+function renderTeamLogoPreview() {
+  if (!teamLogoPreview || !teamLogoImage) return;
+  const hasLogo = Boolean(pendingTeamLogoDataUrl);
+  teamLogoPreview.hidden = !hasLogo;
+  if (hasLogo) {
+    teamLogoImage.src = pendingTeamLogoDataUrl;
+  } else {
+    teamLogoImage.removeAttribute("src");
+  }
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read team logo."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function isCoachRecipientMode() {
@@ -482,7 +509,8 @@ teamForm?.addEventListener("submit", async (event) => {
         body: JSON.stringify({
           name: teamForm.teamName.value,
           location: teamForm.teamLocation.value,
-          sport: chosenSport
+          sport: chosenSport,
+          imageDataUrl: pendingTeamLogoDataUrl
         })
       });
       await loadBackendDashboard();
@@ -505,6 +533,32 @@ teamForm?.addEventListener("submit", async (event) => {
     setFeedback("team-feedback", error.message || "Could not save team profile.", true);
     showAction(error.message || "Could not save team profile.", true);
   }
+});
+
+teamLogoUpload?.addEventListener("change", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement)) return;
+  const file = target.files?.[0];
+  if (!file) return;
+  try {
+    if (file.size > 2_000_000) {
+      throw new Error("Team logo must be under 2 MB.");
+    }
+    pendingTeamLogoDataUrl = await readFileAsDataUrl(file);
+    renderTeamLogoPreview();
+    setFeedback("team-feedback", "Team logo ready to save with your profile.");
+  } catch (error) {
+    target.value = "";
+    setFeedback("team-feedback", error.message || "Could not load team logo.", true);
+    showAction(error.message || "Could not load team logo.", true);
+  }
+});
+
+clearTeamLogoButton?.addEventListener("click", () => {
+  pendingTeamLogoDataUrl = "";
+  if (teamLogoUpload) teamLogoUpload.value = "";
+  renderTeamLogoPreview();
+  setFeedback("team-feedback", "Team logo removed. Save team profile to publish the change.");
 });
 
 teamForm?.teamSport?.addEventListener("change", () => {

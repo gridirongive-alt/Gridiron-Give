@@ -1822,28 +1822,41 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
 
 app.patch("/api/teams/:teamId", (req, res) => {
   const { teamId } = req.params;
-  const { name, location, sport } = req.body || {};
+  const { name, location, sport, imageDataUrl } = req.body || {};
   const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId);
   if (!team) return res.status(404).json({ error: "Team not found." });
   let nextSport;
   let nextName;
   let nextLocation;
+  let nextLogoDataUrl;
   const nextRecipientMode = String(team.recipient_mode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
     nextSport = sanitizeSingleLineText(sport ?? team.sport ?? "").toLowerCase();
     nextName = assertSafeName(name || team.name, "Team Name");
     nextLocation = assertSafeOptionalText(location || "", "Team Location", 120);
+    nextLogoDataUrl =
+      typeof imageDataUrl === "string" ? String(imageDataUrl).trim() : String(team.logo_data_url || "");
+    if (
+      nextLogoDataUrl &&
+      !/^data:image\/(?:png|jpeg|jpg|webp|gif);base64,[a-z0-9+/=]+$/iu.test(nextLogoDataUrl)
+    ) {
+      throw new Error("Team logo must be a valid image upload.");
+    }
+    if (nextLogoDataUrl.length > 3_000_000) {
+      throw new Error("Team logo is too large.");
+    }
     if (nextSport && !["football", "hockey", "lacrosse", "baseball"].includes(nextSport)) {
       throw new Error("Sport selection is invalid.");
     }
   } catch (error) {
     return res.status(400).json({ error: error.message || "Invalid team profile data." });
   }
-  db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=? WHERE id=?").run(
+  db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=?, logo_data_url=? WHERE id=?").run(
     nextName,
     nextLocation,
     nextSport,
     nextRecipientMode,
+    nextLogoDataUrl,
     teamId
   );
   db.prepare("UPDATE coaches SET team_name=? WHERE id=?").run(nextName, team.coach_id);
@@ -2341,8 +2354,9 @@ app.get("/api/public/players/:publicId", (req, res) => {
     .prepare(
       `SELECT
         p.*,
-        t.name AS team_name,
+       t.name AS team_name,
         t.sport AS team_sport,
+        t.logo_data_url AS team_logo_data_url,
         t.recipient_mode,
         c.id AS coach_id,
         c.name AS coach_name,
@@ -2359,6 +2373,7 @@ app.get("/api/public/players/:publicId", (req, res) => {
   return res.json({
     player: {
       ...player,
+      team_logo_data_url: player.team_logo_data_url || "",
       recipient_mode: player.recipient_mode || "coach",
       coach_name: player.coach_name || "",
       stripe_account_id:
@@ -2397,7 +2412,17 @@ app.get("/api/public/teams/:teamId", (req, res) => {
       ? activeTeamEquipment.reduce((sum, item) => sum + Number(item.goal || 0), 0) * players.length
       : players.reduce((sum, item) => sum + Number(item.goalTotal || 0), 0);
   const totalTeamRaised = players.reduce((sum, item) => sum + Number(item.raisedTotal || 0), 0);
-  return res.json({ team: { ...team, coach_name: coach?.name || "", stripe_account_id: String(coach?.stripe_account_id || "") }, players, teamEquipment, totalTeamGoal, totalTeamRaised });
+  return res.json({
+    team: {
+      ...team,
+      coach_name: coach?.name || "",
+      stripe_account_id: String(coach?.stripe_account_id || "")
+    },
+    players,
+    teamEquipment,
+    totalTeamGoal,
+    totalTeamRaised
+  });
 });
 
 app.post("/api/donations", (req, res) => {

@@ -58,6 +58,19 @@
                   Team Location
                   <input type="text" name="teamLocation" placeholder="City, State" />
                 </label>
+                <div class="team-logo-field">
+                  <div>
+                    <label for="team-logo-upload">Team Logo</label>
+                    <p class="subtle-copy">Upload one logo to show on team and player public pages.</p>
+                  </div>
+                  <div class="team-logo-controls section-top-gap-sm">
+                    <div class="team-logo-preview" id="team-logo-preview" hidden>
+                      <img id="team-logo-image" alt="Team logo preview" />
+                    </div>
+                    <input type="file" id="team-logo-upload" accept="image/png,image/jpeg,image/webp,image/gif" />
+                    <button class="btn btn-soft btn-small" type="button" id="clear-team-logo">Remove Logo</button>
+                  </div>
+                </div>
                 <label>
                   Sport
                   <select name="teamSport">
