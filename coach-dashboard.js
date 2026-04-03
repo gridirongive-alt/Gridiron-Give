@@ -370,6 +370,7 @@ function renderSharedEquipment() {
   rows.forEach((item, index) => {
     const row = document.createElement("div");
     row.className = "equipment-row equipment-row-edit";
+    row.dataset.equipmentIndex = String(index);
     row.innerHTML = `
       <div class="equipment-card-topline">
         <label class="toggle-label compact-toggle">
@@ -385,7 +386,7 @@ function renderSharedEquipment() {
           <span class="field-caption">Equipment</span>
           <input type="text" data-shared-field="name" data-index="${index}" value="${String(item.name || "").replace(/"/g, "&quot;")}" />
         </label>
-        <p class="equipment-card-price">$${Number(item.goal || 0).toFixed(0)}</p>
+        <p class="equipment-card-price" data-shared-price="${index}">$${Number(item.goal || 0).toFixed(0)}</p>
         <label class="equipment-card-field equipment-card-goal">
           <span class="field-caption">Set Goal</span>
           <div class="goal-input-wrap">
@@ -400,6 +401,32 @@ function renderSharedEquipment() {
       </div>
     `;
     sharedEquipmentList.appendChild(row);
+  });
+}
+
+function updateSharedEquipmentPricePreview(index) {
+  const priceEl = sharedEquipmentList?.querySelector(`[data-shared-price="${index}"]`);
+  const goalInput = sharedEquipmentList?.querySelector(`input[data-shared-field="goal"][data-index="${index}"]`);
+  if (!priceEl || !(goalInput instanceof HTMLInputElement)) return;
+  priceEl.textContent = `$${Number(goalInput.value || 0).toFixed(0)}`;
+}
+
+function serializeSharedEquipmentFromDom() {
+  const rows = [...(sharedEquipmentList?.querySelectorAll(".equipment-row-edit") || [])];
+  return rows.map((row, index) => {
+    const base = state.teamEquipment[index] || {};
+    const nameInput = row.querySelector(`input[data-shared-field="name"][data-index="${index}"]`);
+    const goalInput = row.querySelector(`input[data-shared-field="goal"][data-index="${index}"]`);
+    const enabledInput = row.querySelector(`input[data-shared-field="enabled"][data-index="${index}"]`);
+    return {
+      id: base.id || "",
+      name: nameInput instanceof HTMLInputElement ? nameInput.value : String(base.name || "Equipment"),
+      category: String(base.category || "General"),
+      price_range: String(base.price_range || base.priceRange || ""),
+      goal: goalInput instanceof HTMLInputElement ? Number(goalInput.value || 0) : Number(base.goal || 0),
+      enabled: enabledInput instanceof HTMLInputElement ? (enabledInput.checked ? 1 : 0) : Number(base.enabled) === 0 ? 0 : 1,
+      sort_order: Number(base.sort_order ?? index)
+    };
   });
 }
 
@@ -941,6 +968,7 @@ sharedEquipmentList?.addEventListener("input", (event) => {
   }
   if (field === "goal") {
     state.teamEquipment[index].goal = Number(target.value || 0);
+    updateSharedEquipmentPricePreview(index);
     return;
   }
   state.teamEquipment[index][field] = target.value;
@@ -970,10 +998,14 @@ sharedEquipmentAddButton?.addEventListener("click", () => {
 sharedEquipmentSaveButton?.addEventListener("click", async () => {
   if (state.mode !== "backend" || !state.team) return;
   try {
-    await apiRequest(`/api/teams/${encodeURIComponent(state.team.id)}/shared-equipment`, {
+    state.teamEquipment = serializeSharedEquipmentFromDom();
+    const result = await apiRequest(`/api/teams/${encodeURIComponent(state.team.id)}/shared-equipment`, {
       method: "PUT",
       body: JSON.stringify({ items: state.teamEquipment })
     });
+    if (Array.isArray(result?.items)) {
+      state.teamEquipment = result.items;
+    }
     await loadBackendDashboard();
     renderSharedEquipment();
     renderRoster();

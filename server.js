@@ -1915,7 +1915,7 @@ app.put("/api/teams/:teamId/shared-equipment", (req, res) => {
   try {
     tx();
     syncTeamSharedEquipmentToPlayers(teamId);
-    return res.json({ ok: true });
+    return res.json({ ok: true, items: teamEquipmentTemplateRows(teamId) });
   } catch (error) {
     return res.status(400).json({ error: error?.message || "Could not save shared equipment." });
   }
