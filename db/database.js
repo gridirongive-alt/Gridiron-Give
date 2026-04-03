@@ -49,46 +49,89 @@ function equipmentTemplateForSport(sport) {
       ["Helmet", "Protection", "$250 - $450"],
       ["Shoulder Pads", "Protection", "$150 - $300"],
       ["Cleats", "Footwear", "$50 - $150"],
-      ["Practice Jersey", "Apparel", "$20 - $40"],
-      ["Game Jersey", "Apparel", "$50 - $120"],
-      ["Integrated Padded Pants", "Protection", "$40 - $80"],
-      ["Girdle", "Protection", "$30 - $60"],
-      ["Mouthguard", "Protection", "$10 - $25"],
+      ["Jersey/Pants", "Apparel", "$20 - $40"],
+      ["Practice Gear", "Apparel", "$50 - $120"],
+      ["Girdle/Lower Body Pads", "Protection", "$40 - $80"],
+      ["Back Plate/Rib Protection", "Protection", "$30 - $60"],
+      ["Mouthguard/Chinstrap", "Protection", "$10 - $25"],
       ["Gloves", "Accessories", "$30 - $65"],
-      ["Kicking Cleats", "Footwear", "$60 - $170"]
+      ["Training Shoes", "Footwear", "$60 - $170"],
+      ["Season Referee Fees", "Officiating", "$600 - $1,500"],
+      ["Season Field Rental", "Facilities", "$500 - $2,000"]
     ],
-    hockey: [
+    "ice hockey": [
       ["Skates", "Footwear", "$150 - $600"],
-      ["Hockey Stick", "Gear", "$50 - $250"],
-      ["Helmet with Cage", "Protection", "$100 - $250"],
-      ["Gloves", "Protection", "$60 - $150"],
-      ["Shoulder Pads", "Protection", "$70 - $180"],
-      ["Elbow Pads", "Protection", "$40 - $90"],
-      ["Shin Guards", "Protection", "$50 - $120"],
-      ["Hockey Pants", "Protection", "$60 - $160"],
-      ["Neck Guard", "Protection", "$15 - $30"]
+      ["Helmet (with Cage)", "Protection", "$80 - $250"],
+      ["Sticks (2x)", "Equipment", "$100 - $400"],
+      ["Gloves", "Protection", "$60 - $180"],
+      ["Pads (Shoulder/Shin/Elbow)", "Protection", "$150 - $350"],
+      ["Breezers/Pants", "Apparel", "$80 - $200"],
+      ["Season Official Fees", "Officiating", "$500 - $1,200"],
+      ["Season Ice Rental", "Facilities", "$2,000 - $6,000"]
     ],
     lacrosse: [
-      ["Lacrosse Helmet", "Protection", "$200 - $350"],
-      ["Lacrosse Stick (Complete)", "Gear", "$60 - $200"],
-      ["Shoulder Pads", "Protection", "$70 - $150"],
-      ["Gloves", "Protection", "$50 - $180"],
-      ["Arm Pads", "Protection", "$40 - $90"],
+      ["Stick (Complete)", "Equipment", "$80 - $250"],
+      ["Helmet (Men's) or Goggles (Women's)", "Protection", "$40 - $350"],
+      ["Gloves", "Protection", "$70 - $180"],
+      ["Pads (Shoulder/Arm/Ribs)", "Protection", "$120 - $300"],
       ["Cleats", "Footwear", "$60 - $130"],
-      ["Mouthguard", "Protection", "$10 - $25"],
-      ["Rib Pads (Optional)", "Protection", "$30 - $70"]
+      ["Season Official Fees", "Officiating", "$400 - $1,000"],
+      ["Season Field/Turf Rental", "Facilities", "$600 - $1,800"]
     ],
     baseball: [
-      ["Baseball Glove", "Gear", "$50 - $250"],
-      ["BBCOR/USSSA Bat", "Gear", "$150 - $450"],
-      ["Batting Helmet", "Protection", "$30 - $70"],
+      ["Glove", "Equipment", "$60 - $250"],
+      ["Bat", "Equipment", "$100 - $450"],
+      ["Helmet", "Protection", "$40 - $100"],
       ["Cleats", "Footwear", "$50 - $120"],
-      ["Batting Gloves", "Accessories", "$20 - $50"],
-      ["Catcher's Gear Set (If applicable)", "Protection", "$150 - $400"],
-      ["Baseball Pants", "Apparel", "$20 - $50"],
-      ["Equipment Bag", "Accessories", "$30 - $100"]
+      ["Uniform/Pants", "Apparel", "$50 - $150"],
+      ["Season Umpire Fees", "Officiating", "$500 - $1,100"],
+      ["Season Field Maintenance/Rental", "Facilities", "$400 - $1,200"]
+    ],
+    "field hockey": [
+      ["Stick", "Equipment", "$50 - $300"],
+      ["Shin Guards & Goggles", "Protection", "$70 - $160"],
+      ["Turf Shoes", "Footwear", "$60 - $140"],
+      ["Season Umpire Fees", "Officiating", "$350 - $900"],
+      ["Season Turf Rental", "Facilities", "$500 - $1,500"]
+    ],
+    basketball: [
+      ["Basketball Shoes", "Footwear", "$80 - $180"],
+      ["Uniform/Warm-ups", "Apparel", "$60 - $150"],
+      ["Ball", "Equipment", "$30 - $70"],
+      ["Season Referee Fees", "Officiating", "$400 - $950"],
+      ["Season Gym Rental", "Facilities", "$600 - $2,000"]
+    ],
+    soccer: [
+      ["Cleats", "Footwear", "$50 - $200"],
+      ["Shin Guards", "Protection", "$15 - $50"],
+      ["Uniform/Training Gear", "Apparel", "$70 - $200"],
+      ["Season Referee Fees", "Officiating", "$450 - $1,200"],
+      ["Season Field Rental", "Facilities", "$400 - $1,500"]
+    ],
+    volleyball: [
+      ["Court Shoes", "Footwear", "$70 - $150"],
+      ["Knee Pads", "Protection", "$25 - $50"],
+      ["Jersey/Spandex", "Apparel", "$50 - $120"],
+      ["Season Official Fees", "Officiating", "$350 - $800"],
+      ["Season Court Rental", "Facilities", "$500 - $1,800"]
+    ],
+    tennis: [
+      ["Racket(s)", "Equipment", "$100 - $400"],
+      ["Court Shoes", "Footwear", "$70 - $160"],
+      ["Tennis Whites/Athletic Wear", "Apparel", "$50 - $150"],
+      ["Tournament Official Fees", "Officiating", "$200 - $600"],
+      ["Season Court Membership/Rental", "Facilities", "$200 - $800"]
+    ],
+    golf: [
+      ["Clubs (Full Set)", "Equipment", "$300 - $1,200"],
+      ["Golf Bag", "Equipment", "$100 - $250"],
+      ["Golf Shoes", "Footwear", "$70 - $180"],
+      ["Tournament/Rules Officials", "Officiating", "$150 - $500"],
+      ["Season Greens Fees/Range Access", "Facilities", "$400 - $2,500"]
     ]
   };
+  if (sport === "hockey") return items["ice hockey"];
+  if (sport === "baseball/softball") return items.baseball;
   return items[sport] || items.football;
 }
 
