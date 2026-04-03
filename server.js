@@ -177,6 +177,13 @@ app.use((req, res, next) => {
   return next();
 });
 
+app.use((req, res, next) => {
+  if (String(req.path || "").startsWith("/api/") || String(req.path || "").startsWith("/stripe/")) {
+    res.setHeader("Cache-Control", "no-store");
+  }
+  return next();
+});
+
 app.use(express.static(__dirname));
 
 function normalizeEmail(email) {
@@ -607,16 +614,29 @@ function ensureTeamSharedEquipmentTemplates(team) {
   const templateNames = new Set(templates.map((row) => String(row[0]).trim().toLowerCase()));
   const matchingCount = rows.filter((row) => templateNames.has(String(row.name || "").trim().toLowerCase())).length;
   if (rows.length && matchingCount === rows.length) return rows;
+  const priorRowsByOrder = new Map(
+    rows.map((row, index) => [Number(row.sort_order ?? index), { goal: Number(row.goal || 0), enabled: Number(row.enabled) === 0 ? 0 : 1 }])
+  );
   if (rows.length) {
     db.prepare("DELETE FROM team_equipment_templates WHERE team_id=?").run(team.id);
   }
   const tx = db.transaction(() => {
     templates.forEach((row, index) => {
+      const prior = priorRowsByOrder.get(index);
       db.prepare(
         `INSERT INTO team_equipment_templates
         (id, team_id, name, category, price_range, goal, enabled, sort_order)
-        VALUES (?, ?, ?, ?, ?, 0, 1, ?)`
-      ).run(uid("teq"), team.id, row[0], row[1], row[2], index);
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        uid("teq"),
+        team.id,
+        row[0],
+        row[1],
+        row[2],
+        Number(prior?.goal || 0),
+        Number(prior?.enabled) === 0 ? 0 : 1,
+        index
+      );
     });
   });
   tx();

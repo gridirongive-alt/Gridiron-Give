@@ -72,6 +72,7 @@ async function apiRequest(path, options = {}) {
     headers["Content-Type"] = "application/json";
   }
   const response = await fetch(path, {
+    cache: "no-store",
     headers,
     ...options
   });
