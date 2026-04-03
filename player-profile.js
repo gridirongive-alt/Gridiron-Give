@@ -408,13 +408,16 @@ async function submitDonation(formData) {
       }),
     });
     if (!response?.url) {
-      throw new Error("Stripe checkout did not return a redirect URL.");
+      if (!response?.mock) {
+        throw new Error("Stripe checkout did not return a redirect URL.");
+      }
     }
     return {
       redirectUrl: response.url,
       amount: centsToDollars(response.totalAmount || checkout.checkoutTotalCents),
       athleteAmount: centsToDollars(response.playerAmount || checkout.athleteAmountCents),
-      externalCheckout: true,
+      externalCheckout: !response?.mock,
+      mock: Boolean(response?.mock)
     };
   }
 
@@ -488,9 +491,15 @@ donationForm?.addEventListener("submit", async (event) => {
       window.location.assign(donation.redirectUrl);
       return;
     }
-    donationFeedback.textContent = `Donation confirmed (${money(donation.amount)}).`;
+    donationFeedback.textContent = donation?.mock
+      ? `Test donation confirmed locally (${money(donation.amount)}).`
+      : `Donation confirmed (${money(donation.amount)}).`;
     donationFeedback.classList.remove("is-error");
-    showAction(`Donation confirmed (${money(donation.amount)}). Thank you for supporting this athlete.`);
+    showAction(
+      donation?.mock
+        ? `Local test donation confirmed (${money(donation.amount)}).`
+        : `Donation confirmed (${money(donation.amount)}). Thank you for supporting this athlete.`
+    );
     donationForm.reset();
     selectedDonationMode = "equipment";
     selectedIndex = null;

@@ -433,6 +433,15 @@ async function openHostedStripeOnboarding(payoutWindow) {
   if (response?.stripeAccountId) {
     current.stripeAccountId = String(response.stripeAccountId);
   }
+  if (response?.mock) {
+    current.stripeOnboardingComplete = true;
+    renderPayoutButton(current);
+    if (payoutWindow && !payoutWindow.closed) {
+      payoutWindow.close();
+    }
+    showAction(response.message || "Local Stripe mock enabled. Payout setup marked complete.");
+    return;
+  }
   if (!response?.url) {
     throw new Error("Stripe onboarding link was not returned.");
   }
@@ -638,6 +647,13 @@ stripeDashboardButton?.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ playerId: current.id }),
     });
+    if (response?.mock) {
+      if (dashboardWindow && !dashboardWindow.closed) {
+        dashboardWindow.close();
+      }
+      showAction(response.message || "Local Stripe mock enabled. No Stripe dashboard opens on localhost.");
+      return;
+    }
     if (!response?.url) {
       throw new Error("Stripe dashboard link was not returned.");
     }

@@ -318,6 +318,17 @@ donationForm?.addEventListener("submit", async (event) => {
         anonymous: Boolean(formData.get("anonymous"))
       })
     });
+    if (checkout?.mock) {
+      closeDonationModal();
+      donationForm.reset();
+      await loadTeam();
+      renderTop();
+      renderRoster();
+      renderTeamDonationPanel();
+      updateDonationButton();
+      showAction("Local test donation confirmed.");
+      return;
+    }
     if (!checkout?.url) throw new Error("Stripe checkout did not return a redirect URL.");
     window.location.assign(checkout.url);
   } catch (error) {

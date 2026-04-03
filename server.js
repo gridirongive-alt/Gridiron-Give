@@ -352,6 +352,43 @@ const transporter =
       })
     : null;
 
+function isLocalStripeMockRequest(req) {
+  if (isProduction) return false;
+  if (String(process.env.LOCAL_STRIPE_MOCK || "").toLowerCase() === "false") return false;
+  const host = String(req?.headers?.host || req?.hostname || "").toLowerCase();
+  return (
+    host.includes("localhost") ||
+    host.includes("127.0.0.1") ||
+    host.includes("0.0.0.0")
+  );
+}
+
+function ensureMockPlayerStripeState(playerId) {
+  const player = db
+    .prepare("SELECT id, stripe_account_id FROM players WHERE id=?")
+    .get(playerId);
+  if (!player) throw new Error("Player not found.");
+  const stripeAccountId = String(player.stripe_account_id || "").trim() || `mock_acct_player_${playerId}`;
+  db.prepare("UPDATE players SET stripe_account_id=?, stripe_onboarding_complete=1 WHERE id=?").run(
+    stripeAccountId,
+    playerId
+  );
+  return stripeAccountId;
+}
+
+function ensureMockCoachStripeState(coachId) {
+  const coach = db
+    .prepare("SELECT id, stripe_account_id FROM coaches WHERE id=?")
+    .get(coachId);
+  if (!coach) throw new Error("Coach not found.");
+  const stripeAccountId = String(coach.stripe_account_id || "").trim() || `mock_acct_coach_${coachId}`;
+  db.prepare("UPDATE coaches SET stripe_account_id=?, stripe_onboarding_complete=1 WHERE id=?").run(
+    stripeAccountId,
+    coachId
+  );
+  return stripeAccountId;
+}
+
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
@@ -981,7 +1018,14 @@ app.post("/api/admin/auth/logout", (_req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/api/stripe/config", (_req, res) => {
+app.get("/api/stripe/config", (req, res) => {
+  if (isLocalStripeMockRequest(req)) {
+    return res.json({
+      configured: true,
+      publishableKey: "",
+      mock: true
+    });
+  }
   res.json({
     configured: Boolean(stripe && stripePublishableKey),
     publishableKey: stripePublishableKey || ""
@@ -1122,6 +1166,24 @@ async function createOrLoadCoachStripeAccountId({ coachId, stripeAccountId }) {
 }
 
 async function onboardPlayerHandler(req, res) {
+  if (isLocalStripeMockRequest(req)) {
+    const playerId = String(req.body?.playerId || "").trim();
+    if (!playerId) {
+      return res.status(400).json({ error: "Player id is required." });
+    }
+    try {
+      const stripeAccountId = ensureMockPlayerStripeState(playerId);
+      return res.json({
+        ok: true,
+        mock: true,
+        stripeAccountId,
+        onboardingComplete: true,
+        message: "Local Stripe mock enabled. Player payouts marked as connected."
+      });
+    } catch (error) {
+      return res.status(500).json({ error: error?.message || "Could not mock Stripe onboarding." });
+    }
+  }
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
@@ -1195,6 +1257,27 @@ app.post("/api/stripe/create-account-session", createAccountSessionHandler);
 app.post("/create-account-session", createAccountSessionHandler);
 
 app.post("/api/stripe/player-status", async (req, res) => {
+  if (isLocalStripeMockRequest(req)) {
+    const playerId = String(req.body?.playerId || "").trim();
+    if (!playerId) {
+      return res.status(400).json({ error: "Player id is required." });
+    }
+    const player = db
+      .prepare("SELECT id, stripe_account_id, stripe_onboarding_complete FROM players WHERE id=?")
+      .get(playerId);
+    if (!player) {
+      return res.status(404).json({ error: "Player not found." });
+    }
+    return res.json({
+      stripe_account_id: String(player.stripe_account_id || "").trim(),
+      onboarding_complete: Number(player.stripe_onboarding_complete) === 1,
+      transfers_capability: Number(player.stripe_onboarding_complete) === 1 ? "active" : "inactive",
+      card_payments_capability: Number(player.stripe_onboarding_complete) === 1 ? "active" : "inactive",
+      payouts_enabled: Number(player.stripe_onboarding_complete) === 1,
+      charges_enabled: Number(player.stripe_onboarding_complete) === 1,
+      mock: true
+    });
+  }
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
@@ -1238,6 +1321,24 @@ app.post("/api/stripe/player-status", async (req, res) => {
 });
 
 async function onboardCoachHandler(req, res) {
+  if (isLocalStripeMockRequest(req)) {
+    const coachId = String(req.body?.coachId || "").trim();
+    if (!coachId) {
+      return res.status(400).json({ error: "Coach id is required." });
+    }
+    try {
+      const stripeAccountId = ensureMockCoachStripeState(coachId);
+      return res.json({
+        ok: true,
+        mock: true,
+        stripeAccountId,
+        onboardingComplete: true,
+        message: "Local Stripe mock enabled. Coach payouts marked as connected."
+      });
+    } catch (error) {
+      return res.status(500).json({ error: error?.message || "Could not mock coach Stripe onboarding." });
+    }
+  }
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
@@ -1269,6 +1370,27 @@ app.post("/api/stripe/onboard-coach", onboardCoachHandler);
 app.post("/onboard-coach", onboardCoachHandler);
 
 app.post("/api/stripe/coach-status", async (req, res) => {
+  if (isLocalStripeMockRequest(req)) {
+    const coachId = String(req.body?.coachId || "").trim();
+    if (!coachId) {
+      return res.status(400).json({ error: "Coach id is required." });
+    }
+    const coach = db
+      .prepare("SELECT id, stripe_account_id, stripe_onboarding_complete FROM coaches WHERE id=?")
+      .get(coachId);
+    if (!coach) {
+      return res.status(404).json({ error: "Coach not found." });
+    }
+    return res.json({
+      stripe_account_id: String(coach.stripe_account_id || "").trim(),
+      onboarding_complete: Number(coach.stripe_onboarding_complete) === 1,
+      transfers_capability: Number(coach.stripe_onboarding_complete) === 1 ? "active" : "inactive",
+      card_payments_capability: Number(coach.stripe_onboarding_complete) === 1 ? "active" : "inactive",
+      payouts_enabled: Number(coach.stripe_onboarding_complete) === 1,
+      charges_enabled: Number(coach.stripe_onboarding_complete) === 1,
+      mock: true
+    });
+  }
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
@@ -1309,6 +1431,13 @@ app.post("/api/stripe/coach-status", async (req, res) => {
 });
 
 async function createStripeDashboardLinkHandler(req, res) {
+  if (isLocalStripeMockRequest(req)) {
+    return res.json({
+      ok: true,
+      mock: true,
+      message: "Local Stripe mock enabled. No external Stripe dashboard is used on localhost."
+    });
+  }
   if (!stripe) {
     return res.status(500).json({ error: "Stripe is not configured yet." });
   }
@@ -1362,10 +1491,8 @@ app.post("/api/stripe/dashboard-link", createStripeDashboardLinkHandler);
 app.post("/stripe/dashboard-link", createStripeDashboardLinkHandler);
 
 async function createCheckoutSessionHandler(req, res) {
-  if (!stripe) {
-    return res.status(500).json({ error: "Stripe is not configured yet." });
-  }
-
+  const localStripeMock = isLocalStripeMockRequest(req);
+  const usingStripe = Boolean(stripe) && !localStripeMock;
   const {
     stripe_account_id: stripeAccountIdRaw,
     amount,
@@ -1422,6 +1549,48 @@ async function createCheckoutSessionHandler(req, res) {
       payoutRecipientId = payoutContext.recipientId;
       resolvedTeamId = payoutContext.teamId;
       resolvedStripeAccountId = payoutContext.stripeAccountId;
+    }
+
+    if (localStripeMock) {
+      let resolvedEquipmentItemId = String(equipmentItemId || "").trim();
+      if (!resolvedEquipmentItemId && donationType === "equipment" && playerId && teamEquipmentName) {
+        const matchedEquipment = db
+          .prepare(
+            "SELECT id FROM equipment_items WHERE player_id=? AND lower(name)=lower(?) AND enabled=1 ORDER BY rowid ASC LIMIT 1"
+          )
+          .get(String(playerId || "").trim(), String(teamEquipmentName || "").trim());
+        resolvedEquipmentItemId = String(matchedEquipment?.id || "");
+      }
+      const donationResult = applyDonationToDatabase({
+        playerId: String(playerId || "").trim(),
+        teamId: resolvedTeamId,
+        donationType: String(donationType || "equipment").trim().toLowerCase(),
+        equipmentItemId: resolvedEquipmentItemId,
+        donorName,
+        donorEmail,
+        donorMessage,
+        anonymous,
+        amount: split.playerAmountCents / 100,
+        payoutRecipientType,
+        payoutRecipientId,
+        stripeDestinationAccountId: resolvedStripeAccountId || `mock_destination_${payoutRecipientType}_${payoutRecipientId || "local"}`,
+        checkoutTotalAmount: split.checkoutTotalCents / 100,
+        applicationFeeAmount: split.applicationFeeCents / 100
+      });
+      return res.json({
+        ok: true,
+        mock: true,
+        donationId: donationResult?.donationId || donationResult?.donationIds?.[0] || "",
+        totalAmount: split.checkoutTotalCents,
+        playerAmount: split.playerAmountCents,
+        applicationFeeAmount: split.applicationFeeCents,
+        stripeFeeAmount: split.stripeFeeCents,
+        message: "Local Stripe mock enabled. Donation recorded without Stripe checkout."
+      });
+    }
+
+    if (!usingStripe) {
+      return res.status(500).json({ error: "Stripe is not configured yet." });
     }
 
     if (!resolvedStripeAccountId) {

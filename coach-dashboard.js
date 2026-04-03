@@ -1068,6 +1068,15 @@ continueCoachStripeSetupButton?.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ coachId: state.coach.id })
     });
+    if (response?.mock) {
+      try {
+        if (newWindow && !newWindow.closed) newWindow.close();
+      } catch {}
+      await loadBackendDashboard();
+      renderCoachPayoutSection();
+      showAction(response.message || "Local Stripe mock enabled. Team payouts marked complete.");
+      return;
+    }
     if (!response?.url) {
       throw new Error("Stripe onboarding link was not returned.");
     }
@@ -1104,6 +1113,10 @@ coachStripeDashboardButton?.addEventListener("click", async () => {
       method: "POST",
       body: JSON.stringify({ role: "coach", coachId: state.coach.id })
     });
+    if (response?.mock) {
+      showAction(response.message || "Local Stripe mock enabled. No Stripe dashboard opens on localhost.");
+      return;
+    }
     window.open(response.url, "_blank", "noopener");
   } catch (error) {
     showAction(error.message || "Could not open Stripe dashboard.", true);
