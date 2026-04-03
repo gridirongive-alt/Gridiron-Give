@@ -773,7 +773,7 @@ function applyDonationToDatabase({
   checkoutTotalAmount = 0,
   applicationFeeAmount = 0
 }) {
-  if (!playerId || !donorName || !donorEmail || !amount) {
+  if (!donorName || !donorEmail || !amount) {
     throw new Error("Missing required donation fields.");
   }
 
@@ -823,6 +823,10 @@ function applyDonationToDatabase({
       donationIds: results.flatMap((entry) => entry.donationIds || (entry.donationId ? [entry.donationId] : [])),
       amount: value
     };
+  }
+
+  if (!playerId) {
+    throw new Error("Missing required donation fields.");
   }
 
   const payoutContext = payoutContextForPlayer(playerId);

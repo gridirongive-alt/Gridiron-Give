@@ -452,6 +452,31 @@ function getTeamRoster(teamId) {
   return { team, players };
 }
 
+function getTeamDonations(teamId) {
+  const data = readData();
+  const players = data.players.filter((player) => player.teamId === teamId);
+  const playerById = new Map(players.map((player) => [player.id, player]));
+  return (Array.isArray(data.donations) ? data.donations : [])
+    .filter((donation) => playerById.has(donation.playerId))
+    .map((donation) => {
+      const player = playerById.get(donation.playerId);
+      return {
+        id: donation.id,
+        amount: Number(donation.amount || 0),
+        checkout_total_amount: Number(donation.amount || 0),
+        application_fee_amount: 0,
+        donor_name: String(donation.donorName || "").trim(),
+        donor_email: String(donation.donorEmail || "").trim(),
+        anonymous: donation.anonymous ? 1 : 0,
+        created_at: donation.createdAt || "",
+        first_name: String(player?.firstName || "").trim(),
+        last_name: String(player?.lastName || "").trim(),
+        equipment_name: String(donation.equipmentName || "General Donation").trim()
+      };
+    })
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+}
+
 function recordDonation({
   playerInternalId,
   donationType,
@@ -572,6 +597,7 @@ window.GridironData = {
   savePlayerProfile,
   findSearchResults,
   getTeamRoster,
+  getTeamDonations,
   recordDonation,
   gearForSport,
   slugify,

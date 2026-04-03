@@ -643,7 +643,7 @@ function loadLocalDashboard() {
     team: bundle.team,
     players: api.playersForTeam(bundle.team.id),
     teamEquipment: [],
-    transactions: []
+    transactions: api.getTeamDonations(bundle.team.id)
   };
 }
 
