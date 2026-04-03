@@ -16,6 +16,8 @@ const coachRecipientModeInput = document.getElementById("coach-recipient-mode-in
 const coachSetupModeLabel = document.getElementById("coach-setup-mode-label");
 const coachSetupModeCopy = document.getElementById("coach-setup-mode-copy");
 const changeCoachPayoutModeButton = document.getElementById("change-coach-payout-mode");
+const coachTeamStateSelect = document.getElementById("coach-team-state-select");
+const coachTeamOutsideUs = document.getElementById("coach-team-outside-us");
 const contactForm = document.getElementById("contact-form");
 const introOverlay = document.getElementById("intro-overlay");
 const featuredCard = document.getElementById("featured-player-card");
@@ -201,6 +203,14 @@ function openCreateAccountWithTab(targetPanelId) {
   });
 }
 
+function syncCoachLocationInputs() {
+  if (!coachTeamStateSelect || !coachTeamOutsideUs) return;
+  const outsideUs = coachTeamOutsideUs.checked;
+  coachTeamStateSelect.disabled = outsideUs;
+  coachTeamStateSelect.required = !outsideUs;
+  if (outsideUs) coachTeamStateSelect.value = "";
+}
+
 function applyCoachRecipientMode(mode) {
   const safeMode = mode === "player" ? "player" : "coach";
   if (coachRecipientModeInput) coachRecipientModeInput.value = safeMode;
@@ -226,6 +236,8 @@ coachModeButtons.forEach((button) => {
   });
 });
 applyCoachRecipientMode("coach");
+syncCoachLocationInputs();
+coachTeamOutsideUs?.addEventListener("change", syncCoachLocationInputs);
 
 function buildSuggestionItem(text, onClick) {
   const li = document.createElement("li");
@@ -331,8 +343,20 @@ coachSignupForm?.addEventListener("submit", async (event) => {
   const formData = new FormData(coachSignupForm);
   const password = String(formData.get("coachPassword") || "");
   const passwordConfirm = String(formData.get("coachPasswordConfirm") || "");
+  const teamCity = String(formData.get("teamCity") || "").trim();
+  const teamState = String(formData.get("teamState") || "").trim().toUpperCase();
+  const outsideUs = Boolean(formData.get("teamOutsideUs"));
+  const teamLocation = outsideUs ? `${teamCity} (International)` : `${teamCity}, ${teamState}`;
   if (password !== passwordConfirm) {
     showFeedback("coach-signup-feedback", "Passwords must match.", true);
+    return;
+  }
+  if (!teamCity) {
+    showFeedback("coach-signup-feedback", "Please enter your team city.", true);
+    return;
+  }
+  if (!outsideUs && !teamState) {
+    showFeedback("coach-signup-feedback", "Please choose your team state.", true);
     return;
   }
   if (!formData.get("coachPolicyConsent")) {
@@ -347,6 +371,8 @@ coachSignupForm?.addEventListener("submit", async (event) => {
         email: formData.get("coachEmail"),
         password,
         teamName: formData.get("teamName"),
+        teamLocation,
+        teamSport: formData.get("teamSport"),
         recipientMode: formData.get("recipientMode")
       })
     });
@@ -357,7 +383,9 @@ coachSignupForm?.addEventListener("submit", async (event) => {
         name: formData.get("coachName"),
         email: formData.get("coachEmail"),
         password,
-        teamName: formData.get("teamName")
+        teamName: formData.get("teamName"),
+        teamLocation,
+        teamSport: formData.get("teamSport")
       });
     } catch {}
     dataApi.setSession("coach", backendCoachId, backendCoachId);
@@ -370,7 +398,9 @@ coachSignupForm?.addEventListener("submit", async (event) => {
           name: formData.get("coachName"),
           email: formData.get("coachEmail"),
           password,
-          teamName: formData.get("teamName")
+          teamName: formData.get("teamName"),
+          teamLocation,
+          teamSport: formData.get("teamSport")
         });
         dataApi.setSession("coach", localCoachId, null);
         window.location.href = "/coach-dashboard.html";

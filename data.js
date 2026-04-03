@@ -57,47 +57,91 @@ function gearForSport(sport) {
       defaultEquipmentItem("Helmet", "Protection", "$250 - $450"),
       defaultEquipmentItem("Shoulder Pads", "Protection", "$150 - $300"),
       defaultEquipmentItem("Cleats", "Footwear", "$50 - $150"),
-      defaultEquipmentItem("Practice Jersey", "Apparel", "$20 - $40"),
-      defaultEquipmentItem("Game Jersey", "Apparel", "$50 - $120"),
-      defaultEquipmentItem("Integrated Padded Pants", "Protection", "$40 - $80"),
-      defaultEquipmentItem("Girdle", "Protection", "$30 - $60"),
-      defaultEquipmentItem("Mouthguard", "Protection", "$10 - $25"),
+      defaultEquipmentItem("Jersey/Pants", "Apparel", "$20 - $40"),
+      defaultEquipmentItem("Practice Gear", "Apparel", "$50 - $120"),
+      defaultEquipmentItem("Girdle/Lower Body Pads", "Protection", "$40 - $80"),
+      defaultEquipmentItem("Back Plate/Rib Protection", "Protection", "$30 - $60"),
+      defaultEquipmentItem("Mouthguard/Chinstrap", "Protection", "$10 - $25"),
       defaultEquipmentItem("Gloves", "Accessories", "$30 - $65"),
-      defaultEquipmentItem("Kicking Cleats", "Footwear", "$60 - $170"),
+      defaultEquipmentItem("Training Shoes", "Footwear", "$60 - $170"),
+      defaultEquipmentItem("Season Referee Fees", "Officiating", "$600 - $1500"),
+      defaultEquipmentItem("Season Field Rental", "Facilities", "$500 - $2000"),
     ],
-    hockey: [
+    "ice hockey": [
       defaultEquipmentItem("Skates", "Footwear", "$150 - $600"),
-      defaultEquipmentItem("Hockey Stick", "Gear", "$50 - $250"),
-      defaultEquipmentItem("Helmet with Cage", "Protection", "$100 - $250"),
-      defaultEquipmentItem("Gloves", "Protection", "$60 - $150"),
-      defaultEquipmentItem("Shoulder Pads", "Protection", "$70 - $180"),
-      defaultEquipmentItem("Elbow Pads", "Protection", "$40 - $90"),
-      defaultEquipmentItem("Shin Guards", "Protection", "$50 - $120"),
-      defaultEquipmentItem("Hockey Pants", "Protection", "$60 - $160"),
-      defaultEquipmentItem("Neck Guard", "Protection", "$15 - $30"),
+      defaultEquipmentItem("Helmet (with Cage)", "Protection", "$80 - $250"),
+      defaultEquipmentItem("Sticks (2x)", "Equipment", "$100 - $400"),
+      defaultEquipmentItem("Gloves", "Protection", "$60 - $180"),
+      defaultEquipmentItem("Pads (Shoulder/Shin/Elbow)", "Protection", "$150 - $350"),
+      defaultEquipmentItem("Breezers/Pants", "Apparel", "$80 - $200"),
+      defaultEquipmentItem("Season Official Fees", "Officiating", "$500 - $1200"),
+      defaultEquipmentItem("Season Ice Rental", "Facilities", "$2000 - $6000"),
     ],
     lacrosse: [
-      defaultEquipmentItem("Lacrosse Helmet", "Protection", "$200 - $350"),
-      defaultEquipmentItem("Lacrosse Stick (Complete)", "Gear", "$60 - $200"),
-      defaultEquipmentItem("Shoulder Pads", "Protection", "$70 - $150"),
-      defaultEquipmentItem("Gloves", "Protection", "$50 - $180"),
-      defaultEquipmentItem("Arm Pads", "Protection", "$40 - $90"),
+      defaultEquipmentItem("Stick (Complete)", "Equipment", "$80 - $250"),
+      defaultEquipmentItem("Helmet (Men's) or Goggles (Women's)", "Protection", "$40 - $350"),
+      defaultEquipmentItem("Gloves", "Protection", "$70 - $180"),
+      defaultEquipmentItem("Pads (Shoulder/Arm/Ribs)", "Protection", "$120 - $300"),
       defaultEquipmentItem("Cleats", "Footwear", "$60 - $130"),
-      defaultEquipmentItem("Mouthguard", "Protection", "$10 - $25"),
-      defaultEquipmentItem("Rib Pads (Optional)", "Protection", "$30 - $70"),
+      defaultEquipmentItem("Season Official Fees", "Officiating", "$400 - $1000"),
+      defaultEquipmentItem("Season Field/Turf Rental", "Facilities", "$600 - $1800"),
     ],
     baseball: [
-      defaultEquipmentItem("Baseball Glove", "Gear", "$50 - $250"),
-      defaultEquipmentItem("BBCOR/USSSA Bat", "Gear", "$150 - $450"),
-      defaultEquipmentItem("Batting Helmet", "Protection", "$30 - $70"),
+      defaultEquipmentItem("Glove", "Equipment", "$60 - $250"),
+      defaultEquipmentItem("Bat", "Equipment", "$100 - $450"),
+      defaultEquipmentItem("Helmet", "Protection", "$40 - $100"),
       defaultEquipmentItem("Cleats", "Footwear", "$50 - $120"),
-      defaultEquipmentItem("Batting Gloves", "Accessories", "$20 - $50"),
-      defaultEquipmentItem("Catcher's Gear Set (If applicable)", "Protection", "$150 - $400"),
-      defaultEquipmentItem("Baseball Pants", "Apparel", "$20 - $50"),
-      defaultEquipmentItem("Equipment Bag", "Accessories", "$30 - $100"),
+      defaultEquipmentItem("Uniform/Pants", "Apparel", "$50 - $150"),
+      defaultEquipmentItem("Season Umpire Fees", "Officiating", "$500 - $1100"),
+      defaultEquipmentItem("Season Field Maintenance/Rental", "Facilities", "$400 - $1200"),
+    ],
+    "field hockey": [
+      defaultEquipmentItem("Stick", "Equipment", "$50 - $300"),
+      defaultEquipmentItem("Shin Guards & Goggles", "Protection", "$70 - $160"),
+      defaultEquipmentItem("Turf Shoes", "Footwear", "$60 - $140"),
+      defaultEquipmentItem("Season Umpire Fees", "Officiating", "$350 - $900"),
+      defaultEquipmentItem("Season Turf Rental", "Facilities", "$500 - $1500"),
+    ],
+    basketball: [
+      defaultEquipmentItem("Basketball Shoes", "Footwear", "$80 - $180"),
+      defaultEquipmentItem("Uniform/Warm-ups", "Apparel", "$60 - $150"),
+      defaultEquipmentItem("Ball", "Equipment", "$30 - $70"),
+      defaultEquipmentItem("Season Referee Fees", "Officiating", "$400 - $950"),
+      defaultEquipmentItem("Season Gym Rental", "Facilities", "$600 - $2000"),
+    ],
+    soccer: [
+      defaultEquipmentItem("Cleats", "Footwear", "$50 - $200"),
+      defaultEquipmentItem("Shin Guards", "Protection", "$15 - $50"),
+      defaultEquipmentItem("Uniform/Training Gear", "Apparel", "$70 - $200"),
+      defaultEquipmentItem("Season Referee Fees", "Officiating", "$450 - $1200"),
+      defaultEquipmentItem("Season Field Rental", "Facilities", "$400 - $1500"),
+    ],
+    volleyball: [
+      defaultEquipmentItem("Court Shoes", "Footwear", "$70 - $150"),
+      defaultEquipmentItem("Knee Pads", "Protection", "$25 - $50"),
+      defaultEquipmentItem("Jersey/Spandex", "Apparel", "$50 - $120"),
+      defaultEquipmentItem("Season Official Fees", "Officiating", "$350 - $800"),
+      defaultEquipmentItem("Season Court Rental", "Facilities", "$500 - $1800"),
+    ],
+    tennis: [
+      defaultEquipmentItem("Racket(s)", "Equipment", "$100 - $400"),
+      defaultEquipmentItem("Court Shoes", "Footwear", "$70 - $160"),
+      defaultEquipmentItem("Tennis Whites/Athletic Wear", "Apparel", "$50 - $150"),
+      defaultEquipmentItem("Tournament Official Fees", "Officiating", "$200 - $600"),
+      defaultEquipmentItem("Season Court Membership/Rental", "Facilities", "$200 - $800"),
+    ],
+    golf: [
+      defaultEquipmentItem("Clubs (Full Set)", "Equipment", "$300 - $1200"),
+      defaultEquipmentItem("Golf Bag", "Equipment", "$100 - $250"),
+      defaultEquipmentItem("Golf Shoes", "Footwear", "$70 - $180"),
+      defaultEquipmentItem("Tournament/Rules Officials", "Officiating", "$150 - $500"),
+      defaultEquipmentItem("Season Greens Fees/Range Access", "Facilities", "$400 - $2500"),
     ],
   };
-  return bySport[(sport || "football").toLowerCase()] || bySport.football;
+  const normalized = (sport || "football").toLowerCase();
+  if (normalized === "hockey") return bySport["ice hockey"];
+  if (normalized === "baseball/softball") return bySport.baseball;
+  return bySport[normalized] || bySport.football;
 }
 
 function defaultData() {
@@ -181,7 +225,7 @@ function bootstrapDemoData() {
   return readData();
 }
 
-function createCoachAccount({ name, email, password, teamName }) {
+function createCoachAccount({ name, email, password, teamName, teamLocation, teamSport }) {
   const data = readData();
   const normalizedEmail = normalizeEmail(email);
   if (data.coaches.some((coach) => normalizeEmail(coach.email) === normalizedEmail)) {
@@ -201,8 +245,8 @@ function createCoachAccount({ name, email, password, teamName }) {
     id: teamId,
     coachId,
     name: String(teamName || "").trim(),
-    location: "",
-    sport: "football",
+    location: String(teamLocation || "").trim(),
+    sport: String(teamSport || "football").trim().toLowerCase() || "football",
   });
   writeData(data);
   return coachId;
@@ -275,12 +319,13 @@ function updateTeam(teamId, updates) {
   const data = readData();
   const team = data.teams.find((item) => item.id === teamId);
   if (!team) return false;
+  const previousSport = String(team.sport || "football").toLowerCase();
   team.name = String(updates.name || team.name || "").trim();
-  team.location = String(updates.location || "").trim();
+  team.location = String(updates.location || team.location || "").trim();
   team.sport = String(updates.sport || team.sport || "football").toLowerCase();
   const roster = data.players.filter((item) => item.teamId === team.id);
   roster.forEach((player) => {
-    if (!Array.isArray(player.equipment) || !player.equipment.length) {
+    if (!Array.isArray(player.equipment) || !player.equipment.length || previousSport !== team.sport) {
       player.equipment = gearForSport(team.sport).map((item) => ({
         ...item,
       }));

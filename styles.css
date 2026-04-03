@@ -347,6 +347,19 @@ h3,
   background: #e2f7ea;
 }
 
+.btn-donate {
+  background: linear-gradient(180deg, #ffffff, #f5f9ff);
+  border-color: #cfdcf4;
+  color: #1f63cf;
+  box-shadow: 0 10px 22px rgba(20, 53, 113, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.btn-donate:hover {
+  background: linear-gradient(180deg, #ffffff, #eef5ff);
+  border-color: #bdd2f4;
+  color: #1654b7;
+}
+
 .btn-block {
   width: 100%;
   margin-top: 6px;
@@ -686,6 +699,11 @@ select:focus {
   box-shadow: 0 4px 12px rgba(18, 32, 54, 0.08);
 }
 
+.coach-history-tabs {
+  grid-template-columns: 1fr 1fr;
+  max-width: 380px;
+}
+
 .tab-panel {
   margin-top: 20px;
 }
@@ -842,6 +860,28 @@ select:focus {
   transition: transform 180ms ease;
 }
 
+.summary-card {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #f9fbff, #f2f7ff);
+}
+
+.summary-card h3 {
+  margin: 10px 0 0;
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.donation-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.donation-history-table {
+  padding: 14px;
+  box-shadow: none;
+}
+
 .dashboard-title {
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2.1rem);
@@ -863,6 +903,14 @@ select:focus {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.field-note {
+  display: block;
+  margin-top: 0.45rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
 }
 
 .subtle-copy.is-error {
@@ -897,6 +945,55 @@ select:focus {
   gap: 8px;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.signup-location-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(140px, 0.65fr);
+  gap: 12px;
+}
+
+.readonly-detail-block {
+  display: grid;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.detail-edit-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  font-size: 1rem;
+}
+
+.detail-edit-button.is-active {
+  border-color: #7db1ff;
+  background: rgba(31, 111, 235, 0.12);
+  color: #1656b8;
+}
+
+.readonly-detail-value {
+  margin: 0;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(245, 249, 255, 0.92);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.detail-editor-grid {
+  display: grid;
+  gap: 12px;
+  padding: 10px 0 2px;
 }
 
 .table-wrap {
@@ -1585,6 +1682,30 @@ a.table-name-link {
   background: #f9fbff;
 }
 
+.sql-builder-row {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.sql-statement-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.sql-statement-picker select {
+  min-width: 180px;
+}
+
+.sql-template-note {
+  max-width: 54ch;
+}
+
 .filter-grid {
   display: grid;
   gap: 10px;
@@ -1700,6 +1821,12 @@ a.table-name-link {
   align-items: baseline;
   gap: 2px 6px;
   line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .signup-location-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .inline-link {

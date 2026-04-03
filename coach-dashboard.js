@@ -7,6 +7,14 @@ const teamLogoUpload = document.getElementById("team-logo-upload");
 const clearTeamLogoButton = document.getElementById("clear-team-logo");
 const teamLogoPreview = document.getElementById("team-logo-preview");
 const teamLogoImage = document.getElementById("team-logo-image");
+const teamLocationDisplay = document.getElementById("team-location-display");
+const teamSportDisplay = document.getElementById("team-sport-display");
+const teamLocationEditor = document.getElementById("team-location-editor");
+const teamSportEditor = document.getElementById("team-sport-editor");
+const editTeamLocationButton = document.getElementById("edit-team-location");
+const editTeamSportButton = document.getElementById("edit-team-sport");
+const teamLocationOutsideUs = document.getElementById("team-location-outside-us");
+const teamLocationState = document.getElementById("team-location-state");
 const manualPlayerForm = document.getElementById("manual-player-form");
 const rosterBody = document.getElementById("roster-body");
 const processCsvButton = document.getElementById("process-csv");
@@ -33,8 +41,16 @@ const sharedEquipmentCard = document.getElementById("shared-equipment-card");
 const sharedEquipmentList = document.getElementById("shared-equipment-list");
 const sharedEquipmentAddButton = document.getElementById("shared-equipment-add");
 const sharedEquipmentSaveButton = document.getElementById("shared-equipment-save");
-const transactionsCard = document.getElementById("coach-transactions-card");
 const transactionsBody = document.getElementById("coach-transactions-body");
+const coachTabButtons = [...document.querySelectorAll("[data-coach-tab]")];
+const coachRosterPanel = document.getElementById("coach-tab-panel-roster");
+const coachDonationsPanel = document.getElementById("coach-tab-panel-donations");
+const donationSummaryCredited = document.getElementById("donation-summary-credited");
+const donationSummaryCheckout = document.getElementById("donation-summary-checkout");
+const donationSummaryCount = document.getElementById("donation-summary-count");
+const donationSummaryAverage = document.getElementById("donation-summary-average");
+const donationSearchInput = document.getElementById("coach-donation-search");
+const donationPlayerFilter = document.getElementById("coach-donation-player-filter");
 
 let state = {
   mode: "local",
@@ -46,10 +62,17 @@ let state = {
 };
 let csvPreviewRows = [];
 let pendingTeamLogoDataUrl = "";
+let activeCoachTab = "roster";
+let locationEditEnabled = false;
+let sportEditEnabled = false;
 
 async function apiRequest(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body != null && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
   const response = await fetch(path, {
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+    headers,
     ...options
   });
   const json = await response.json().catch(() => ({}));
@@ -68,6 +91,63 @@ function showAction(message, isError = false) {
   if (typeof window.showActionMessage === "function") {
     window.showActionMessage(message, { isError });
   }
+}
+
+function money(value) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function prettySportLabel(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (!normalized) return "";
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function parseTeamLocation(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return { city: "", state: "", outsideUs: false };
+  if (raw.endsWith("(International)")) {
+    return {
+      city: raw.replace(/\s*\(International\)$/u, "").trim(),
+      state: "",
+      outsideUs: true
+    };
+  }
+  const parts = raw.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      city: parts.slice(0, -1).join(", "),
+      state: parts.at(-1)?.toUpperCase() || "",
+      outsideUs: false
+    };
+  }
+  return { city: raw, state: "", outsideUs: false };
+}
+
+function composeTeamLocationFromEditor() {
+  const city = String(teamForm?.teamLocationCity?.value || "").trim();
+  const state = String(teamForm?.teamLocationState?.value || "").trim().toUpperCase();
+  const outsideUs = Boolean(teamLocationOutsideUs?.checked);
+  if (!city) throw new Error("Please enter your team city.");
+  if (outsideUs) return `${city} (International)`;
+  if (!state) throw new Error("Please choose your team state.");
+  return `${city}, ${state}`;
+}
+
+function syncLocationEditorState() {
+  if (!teamLocationState || !teamLocationOutsideUs) return;
+  const outsideUs = teamLocationOutsideUs.checked;
+  teamLocationState.disabled = outsideUs;
+  teamLocationState.required = !outsideUs && locationEditEnabled;
+  if (outsideUs) teamLocationState.value = "";
+}
+
+function renderTeamDetailEditors() {
+  if (teamLocationEditor) teamLocationEditor.hidden = !locationEditEnabled;
+  if (teamSportEditor) teamSportEditor.hidden = !sportEditEnabled;
+  editTeamLocationButton?.classList.toggle("is-active", locationEditEnabled);
+  editTeamSportButton?.classList.toggle("is-active", sportEditEnabled);
+  syncLocationEditorState();
 }
 
 function openCoachModal() {
@@ -113,31 +193,19 @@ function percentRaised(player) {
   return Math.min(100, Math.round((raised / goal) * 100));
 }
 
-function attentionSetupFields() {
-  if (!teamForm || !state.team) return;
-  const locationField = teamForm.teamLocation;
-  const sportField = teamForm.teamSport;
-  const locationValue = String(locationField?.value ?? state.team.location ?? "").trim();
-  const sportValue = String(sportField?.value ?? state.team.sport ?? "").trim().toLowerCase();
-  const needsLocation = !locationValue;
-  const needsSport = !sportValue;
-
-  locationField.classList.toggle("attention-field", needsLocation);
-  sportField.classList.toggle("attention-field", needsSport);
-  if (needsLocation || needsSport) {
-    setFeedback(
-      "team-feedback",
-      "Complete Team Location and Sport setup before managing your full season.",
-      true
-    );
-  }
-}
-
 function updateTeamForm() {
   if (!teamForm || !state.team) return;
   teamForm.teamName.value = state.team.name || "";
-  teamForm.teamLocation.value = state.team.location || "";
-  teamForm.teamSport.value = state.team.sport || "";
+  if (teamLocationDisplay) teamLocationDisplay.textContent = state.team.location || "Not set";
+  if (teamSportDisplay) teamSportDisplay.textContent = prettySportLabel(state.team.sport) || "Not set";
+  const parsedLocation = parseTeamLocation(state.team.location);
+  if (teamForm.teamLocationCity) teamForm.teamLocationCity.value = parsedLocation.city;
+  if (teamForm.teamLocationState) teamForm.teamLocationState.value = parsedLocation.state;
+  if (teamLocationOutsideUs) teamLocationOutsideUs.checked = parsedLocation.outsideUs;
+  if (teamForm.teamSport) teamForm.teamSport.value = state.team.sport || "";
+  locationEditEnabled = false;
+  sportEditEnabled = false;
+  renderTeamDetailEditors();
   pendingTeamLogoDataUrl = String(state.team.logo_data_url || "");
   renderTeamLogoPreview();
   const recipientMode = String(state.team.recipient_mode || state.team.recipientMode || "coach");
@@ -152,7 +220,6 @@ function updateTeamForm() {
   if (recipientModeGroup) {
     recipientModeGroup.dataset.lockedMode = recipientMode;
   }
-  attentionSetupFields();
 }
 
 function renderTeamLogoPreview() {
@@ -194,21 +261,81 @@ function renderCoachPayoutSection() {
     : "Connect Stripe for the team so donor payments can route to the coach on behalf of selected players.";
 }
 
-function renderTransactions() {
-  if (!transactionsCard || !transactionsBody) return;
-  const show = isCoachRecipientMode();
-  transactionsCard.hidden = !show;
-  if (!show) return;
+function filteredTransactions() {
   const rows = Array.isArray(state.transactions) ? state.transactions : [];
+  const search = String(donationSearchInput?.value || "").trim().toLowerCase();
+  const playerFilter = String(donationPlayerFilter?.value || "").trim();
+  return rows.filter((row) => {
+    const playerName = `${row.first_name || ""} ${row.last_name || ""}`.trim();
+    if (playerFilter && playerName !== playerFilter) return false;
+    if (!search) return true;
+    const haystack = [
+      row.donor_name,
+      row.donor_email,
+      playerName,
+      row.equipment_name
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(search);
+  });
+}
+
+function populateDonationPlayerFilter() {
+  if (!donationPlayerFilter) return;
+  const currentValue = donationPlayerFilter.value;
+  const names = Array.from(
+    new Set(
+      (Array.isArray(state.transactions) ? state.transactions : [])
+        .map((row) => `${row.first_name || ""} ${row.last_name || ""}`.trim())
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+  donationPlayerFilter.innerHTML = '<option value="">All players</option>';
+  names.forEach((name) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    donationPlayerFilter.appendChild(option);
+  });
+  donationPlayerFilter.value = names.includes(currentValue) ? currentValue : "";
+}
+
+function renderTransactionSummary(rows) {
+  if (!donationSummaryCredited || !donationSummaryCheckout || !donationSummaryCount || !donationSummaryAverage) {
+    return;
+  }
+  const totalCredited = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+  const totalCheckout = rows.reduce((sum, row) => sum + Number(row.checkout_total_amount || 0), 0);
+  const count = rows.length;
+  donationSummaryCredited.textContent = money(totalCredited);
+  donationSummaryCheckout.textContent = money(totalCheckout);
+  donationSummaryCount.textContent = String(count);
+  donationSummaryAverage.textContent = money(count ? totalCheckout / count : 0);
+}
+
+function renderTransactions() {
+  if (!transactionsBody) return;
+  const show = isCoachRecipientMode();
+  if (coachDonationsPanel) coachDonationsPanel.hidden = !show || activeCoachTab !== "donations";
+  if (!show) return;
+  populateDonationPlayerFilter();
+  const rows = filteredTransactions();
+  renderTransactionSummary(rows);
   transactionsBody.innerHTML = "";
   if (!rows.length) {
-    transactionsBody.innerHTML = '<tr><td colspan="6" class="subtle-copy">No team transactions yet.</td></tr>';
+    transactionsBody.innerHTML = '<tr><td colspan="7" class="subtle-copy">No team transactions match this view yet.</td></tr>';
     return;
   }
   rows.forEach((row) => {
+    const donorDisplay =
+      Number(row.anonymous) === 1
+        ? `${row.donor_name || "Anonymous"} (Anonymous)`
+        : `${row.donor_name || "Donor"}${row.donor_email ? `<br /><span class="subtle-copy">${row.donor_email}</span>` : ""}`;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${String(row.created_at || "").slice(0, 10) || "-"}</td>
+      <td>${donorDisplay}</td>
       <td>${row.first_name || ""} ${row.last_name || ""}</td>
       <td>${row.equipment_name || "General Donation"}</td>
       <td>$${Number(row.amount || 0).toFixed(2)}</td>
@@ -217,6 +344,16 @@ function renderTransactions() {
     `;
     transactionsBody.appendChild(tr);
   });
+}
+
+function setCoachTab(nextTab) {
+  activeCoachTab = nextTab === "donations" ? "donations" : "roster";
+  coachTabButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.coachTab === activeCoachTab);
+  });
+  if (coachRosterPanel) coachRosterPanel.hidden = activeCoachTab !== "roster";
+  if (coachDonationsPanel) coachDonationsPanel.hidden = activeCoachTab !== "donations" || !isCoachRecipientMode();
+  if (activeCoachTab === "donations") renderTransactions();
 }
 
 function renderSharedEquipment() {
@@ -496,10 +633,17 @@ async function loadDashboard() {
 
 teamForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const chosenSport = String(teamForm.teamSport.value || "").trim().toLowerCase();
-  if (!chosenSport) {
-    setFeedback("team-feedback", "Please select a sport before saving.", true);
-    teamForm.teamSport.classList.add("attention-field");
+  let nextLocation = state.team.location || "";
+  let nextSport = String(state.team.sport || "").trim().toLowerCase();
+  try {
+    if (locationEditEnabled) nextLocation = composeTeamLocationFromEditor();
+    if (sportEditEnabled) {
+      nextSport = String(teamForm.teamSport.value || "").trim().toLowerCase();
+      if (!nextSport) throw new Error("Please select your team sport.");
+    }
+  } catch (error) {
+    setFeedback("team-feedback", error.message || "Please review your team details.", true);
+    showAction(error.message || "Please review your team details.", true);
     return;
   }
   try {
@@ -508,8 +652,8 @@ teamForm?.addEventListener("submit", async (event) => {
         method: "PATCH",
         body: JSON.stringify({
           name: teamForm.teamName.value,
-          location: teamForm.teamLocation.value,
-          sport: chosenSport,
+          location: nextLocation,
+          sport: nextSport,
           imageDataUrl: pendingTeamLogoDataUrl
         })
       });
@@ -517,8 +661,8 @@ teamForm?.addEventListener("submit", async (event) => {
     } else {
       api.updateTeam(state.team.id, {
         name: teamForm.teamName.value,
-        location: teamForm.teamLocation.value,
-        sport: chosenSport
+        location: nextLocation,
+        sport: nextSport
       });
       loadLocalDashboard();
     }
@@ -529,6 +673,7 @@ teamForm?.addEventListener("submit", async (event) => {
     renderCoachPayoutSection();
     renderSharedEquipment();
     renderTransactions();
+    setCoachTab(activeCoachTab);
   } catch (error) {
     setFeedback("team-feedback", error.message || "Could not save team profile.", true);
     showAction(error.message || "Could not save team profile.", true);
@@ -541,8 +686,8 @@ teamLogoUpload?.addEventListener("change", async (event) => {
   const file = target.files?.[0];
   if (!file) return;
   try {
-    if (file.size > 2_000_000) {
-      throw new Error("Team logo must be under 2 MB.");
+    if (file.size > 5_000_000) {
+      throw new Error("Team logo must be under 5 MB.");
     }
     pendingTeamLogoDataUrl = await readFileAsDataUrl(file);
     renderTeamLogoPreview();
@@ -561,13 +706,21 @@ clearTeamLogoButton?.addEventListener("click", () => {
   setFeedback("team-feedback", "Team logo removed. Save team profile to publish the change.");
 });
 
-teamForm?.teamSport?.addEventListener("change", () => {
-  attentionSetupFields();
+coachTabButtons.forEach((button) => {
+  button.addEventListener("click", () => setCoachTab(button.dataset.coachTab || "roster"));
 });
 
-teamForm?.teamLocation?.addEventListener("input", () => {
-  attentionSetupFields();
+donationSearchInput?.addEventListener("input", renderTransactions);
+donationPlayerFilter?.addEventListener("change", renderTransactions);
+editTeamLocationButton?.addEventListener("click", () => {
+  locationEditEnabled = !locationEditEnabled;
+  renderTeamDetailEditors();
 });
+editTeamSportButton?.addEventListener("click", () => {
+  sportEditEnabled = !sportEditEnabled;
+  renderTeamDetailEditors();
+});
+teamLocationOutsideUs?.addEventListener("change", syncLocationEditorState);
 
 manualPlayerForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -825,6 +978,7 @@ sharedEquipmentSaveButton?.addEventListener("click", async () => {
     renderSharedEquipment();
     renderRoster();
     renderTransactions();
+    setCoachTab(activeCoachTab);
     setFeedback("shared-equipment-feedback", "Team pricing saved and synced across the roster.");
     showAction("Team pricing saved and synced across the roster.");
   } catch (error) {
@@ -945,6 +1099,7 @@ logoutButton?.addEventListener("click", () => {
     renderCoachPayoutSection();
     renderSharedEquipment();
     renderTransactions();
+    setCoachTab("roster");
   } catch {
     window.location.href = "/index.html";
   }

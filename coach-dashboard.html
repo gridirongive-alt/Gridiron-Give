@@ -54,10 +54,80 @@
                   Team Name
                   <input type="text" name="teamName" required />
                 </label>
-                <label>
-                  Team Location
-                  <input type="text" name="teamLocation" placeholder="City, State" />
-                </label>
+                <div class="readonly-detail-block">
+                  <div class="detail-head">
+                    <span class="field-caption">Team Location</span>
+                    <button class="icon-btn detail-edit-button" type="button" id="edit-team-location" aria-label="Edit team location">✎</button>
+                  </div>
+                  <p class="readonly-detail-value" id="team-location-display">Team location</p>
+                  <div class="detail-editor-grid" id="team-location-editor" hidden>
+                    <label>
+                      City
+                      <input type="text" name="teamLocationCity" />
+                    </label>
+                    <label>
+                      State
+                      <select name="teamLocationState" id="team-location-state">
+                        <option value="">Select state</option>
+                        <option value="AL">AL</option>
+                        <option value="AK">AK</option>
+                        <option value="AZ">AZ</option>
+                        <option value="AR">AR</option>
+                        <option value="CA">CA</option>
+                        <option value="CO">CO</option>
+                        <option value="CT">CT</option>
+                        <option value="DE">DE</option>
+                        <option value="FL">FL</option>
+                        <option value="GA">GA</option>
+                        <option value="HI">HI</option>
+                        <option value="ID">ID</option>
+                        <option value="IL">IL</option>
+                        <option value="IN">IN</option>
+                        <option value="IA">IA</option>
+                        <option value="KS">KS</option>
+                        <option value="KY">KY</option>
+                        <option value="LA">LA</option>
+                        <option value="ME">ME</option>
+                        <option value="MD">MD</option>
+                        <option value="MA">MA</option>
+                        <option value="MI">MI</option>
+                        <option value="MN">MN</option>
+                        <option value="MS">MS</option>
+                        <option value="MO">MO</option>
+                        <option value="MT">MT</option>
+                        <option value="NE">NE</option>
+                        <option value="NV">NV</option>
+                        <option value="NH">NH</option>
+                        <option value="NJ">NJ</option>
+                        <option value="NM">NM</option>
+                        <option value="NY">NY</option>
+                        <option value="NC">NC</option>
+                        <option value="ND">ND</option>
+                        <option value="OH">OH</option>
+                        <option value="OK">OK</option>
+                        <option value="OR">OR</option>
+                        <option value="PA">PA</option>
+                        <option value="RI">RI</option>
+                        <option value="SC">SC</option>
+                        <option value="SD">SD</option>
+                        <option value="TN">TN</option>
+                        <option value="TX">TX</option>
+                        <option value="UT">UT</option>
+                        <option value="VT">VT</option>
+                        <option value="VA">VA</option>
+                        <option value="WA">WA</option>
+                        <option value="WV">WV</option>
+                        <option value="WI">WI</option>
+                        <option value="WY">WY</option>
+                        <option value="DC">DC</option>
+                      </select>
+                    </label>
+                    <label class="policy-check">
+                      <input type="checkbox" name="teamLocationOutsideUs" id="team-location-outside-us" />
+                      <span class="policy-copy">Outside of the United States</span>
+                    </label>
+                  </div>
+                </div>
                 <div class="team-logo-field">
                   <div>
                     <label for="team-logo-upload">Team Logo</label>
@@ -71,16 +141,32 @@
                     <button class="btn btn-soft btn-small" type="button" id="clear-team-logo">Remove Logo</button>
                   </div>
                 </div>
-                <label>
-                  Sport
-                  <select name="teamSport">
-                    <option value="">Select sport</option>
-                    <option value="football">Football</option>
-                    <option value="hockey">Hockey</option>
-                    <option value="lacrosse">Lacrosse</option>
-                    <option value="baseball">Baseball</option>
-                  </select>
-                </label>
+                <div class="readonly-detail-block">
+                  <div class="detail-head">
+                    <span class="field-caption">Team Sport</span>
+                    <button class="icon-btn detail-edit-button" type="button" id="edit-team-sport" aria-label="Edit team sport">✎</button>
+                  </div>
+                  <p class="readonly-detail-value" id="team-sport-display">Team sport</p>
+                  <div class="detail-editor-grid" id="team-sport-editor" hidden>
+                    <label>
+                      Sport
+                      <select name="teamSport">
+                        <option value="">Select sport</option>
+                        <option value="football">Football</option>
+                        <option value="ice hockey">Ice Hockey</option>
+                        <option value="lacrosse">Lacrosse</option>
+                        <option value="baseball">Baseball/Softball</option>
+                        <option value="field hockey">Field Hockey</option>
+                        <option value="basketball">Basketball</option>
+                        <option value="soccer">Soccer</option>
+                        <option value="volleyball">Volleyball</option>
+                        <option value="tennis">Tennis</option>
+                        <option value="golf">Golf</option>
+                      </select>
+                    </label>
+                  </div>
+                  <span class="field-note">Chosen during signup so roster pricing starts with the correct sport templates.</span>
+                </div>
                 <fieldset class="choice-group" id="recipient-mode-group">
                   <legend>Payout Recipient</legend>
                   <label class="choice-card is-recommended">
@@ -173,7 +259,12 @@
       </section>
 
       <section class="card coach-card section-top-gap">
-        <h2 class="section-title">Roster</h2>
+        <div class="tablist coach-history-tabs" role="tablist" aria-label="Coach dashboard data views">
+          <button class="tab is-active" type="button" data-coach-tab="roster">Roster</button>
+          <button class="tab" type="button" data-coach-tab="donations">Donation History</button>
+        </div>
+        <div id="coach-tab-panel-roster">
+        <h2 class="section-title section-top-gap">Roster</h2>
         <div class="table-wrap">
           <table class="data-table">
             <thead>
@@ -189,6 +280,60 @@
             </thead>
             <tbody id="roster-body"></tbody>
           </table>
+        </div>
+        </div>
+
+        <div id="coach-tab-panel-donations" hidden>
+          <h2 class="section-title section-top-gap">Donation History</h2>
+          <p class="subtle-copy">A full team snapshot plus every donation credited to your roster.</p>
+          <div class="dashboard-grid donation-summary-grid section-top-gap-sm" id="coach-donation-summary">
+            <article class="summary-card">
+              <p class="eyebrow">Total Credited</p>
+              <h3 id="donation-summary-credited">$0.00</h3>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Checkout Volume</p>
+              <h3 id="donation-summary-checkout">$0.00</h3>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Donation Count</p>
+              <h3 id="donation-summary-count">0</h3>
+            </article>
+            <article class="summary-card">
+              <p class="eyebrow">Average Gift</p>
+              <h3 id="donation-summary-average">$0.00</h3>
+            </article>
+          </div>
+          <div class="filter-grid section-top-gap" id="coach-donation-filters">
+            <label>
+              Search
+              <input type="search" id="coach-donation-search" placeholder="Donor, player, or item" />
+            </label>
+            <label>
+              Player
+              <select id="coach-donation-player-filter">
+                <option value="">All players</option>
+              </select>
+            </label>
+          </div>
+          <section class="card section-top-gap-sm donation-history-table">
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Donor</th>
+                    <th>Player</th>
+                    <th>Item</th>
+                    <th>Credited</th>
+                    <th>Checkout Total</th>
+                    <th>Platform Fee</th>
+                  </tr>
+                </thead>
+                <tbody id="coach-transactions-body"></tbody>
+              </table>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -210,24 +355,6 @@
         <p class="form-feedback" id="shared-equipment-feedback"></p>
       </section>
 
-      <section class="card coach-card section-top-gap" id="coach-transactions-card" hidden>
-        <h2 class="section-title">Team Transactions</h2>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Player</th>
-                <th>Item</th>
-                <th>Credited</th>
-                <th>Checkout Total</th>
-                <th>Platform Fee</th>
-              </tr>
-            </thead>
-            <tbody id="coach-transactions-body"></tbody>
-          </table>
-        </div>
-      </section>
     </main>
 
     <div class="modal-backdrop" id="csv-processing-backdrop" hidden>

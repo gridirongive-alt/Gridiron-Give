@@ -231,7 +231,7 @@ function renderTeamDonationPanel() {
           <div class="progress-track"><div class="progress-fill" style="width:${teamProgress}%"></div></div>
           <p class="equipment-card-progress-copy">${money(state.totalTeamRaised)} of ${money(state.totalTeamGoal)} raised</p>
         </div>
-        <button class="btn btn-money equipment-card-cta" type="button">Donate To Team Goal</button>
+        <button class="btn btn-donate equipment-card-cta" type="button">Donate To Team Goal</button>
       </div>
     </div>
   `;

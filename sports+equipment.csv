@@ -1,0 +1,65 @@
+﻿Sport,Category,Item,Typical Price Range (Low),Typical Price Range (High)
+Football,Protection,Helmet,250,450
+Football,Protection,Shoulder Pads,150,300
+Football,Footwear,Cleats,50,150
+Football,Apparel,Jersey/Pants,20,40
+Football,Apparel,Practice Gear,50,120
+Football,Protection,Girdle/Lower Body Pads,40,80
+Football,Protection,Back Plate/Rib Protection,30,60
+Football,Protection,Mouthguard/Chinstrap,10,25
+Football,Accessories,Gloves,30,65
+Football,Footwear,Training Shoes,60,170
+Football,Officiating,Season Referee Fees,600,1500
+Football,Facilities,Season Field Rental,500,2000
+Ice Hockey,Footwear,Skates,150,600
+Ice Hockey,Protection,Helmet (with Cage),80,250
+Ice Hockey,Equipment,Sticks (2x),100,400
+Ice Hockey,Protection,Gloves,60,180
+Ice Hockey,Protection,Pads (Shoulder/Shin/Elbow),150,350
+Ice Hockey,Apparel,Breezers/Pants,80,200
+Ice Hockey,Officiating,Season Official Fees,500,1200
+Ice Hockey,Facilities,Season Ice Rental,2000,6000
+Lacrosse,Equipment,Stick (Complete),80,250
+Lacrosse,Protection,Helmet (Men's) or Goggles (Women's),40,350
+Lacrosse,Protection,Gloves,70,180
+Lacrosse,Protection,Pads (Shoulder/Arm/Ribs),120,300
+Lacrosse,Footwear,Cleats,60,130
+Lacrosse,Officiating,Season Official Fees,400,1000
+Lacrosse,Facilities,Season Field/Turf Rental,600,1800
+Baseball/Softball,Equipment,Glove,60,250
+Baseball/Softball,Equipment,Bat,100,450
+Baseball/Softball,Protection,Helmet,40,100
+Baseball/Softball,Footwear,Cleats,50,120
+Baseball/Softball,Apparel,Uniform/Pants,50,150
+Baseball/Softball,Officiating,Season Umpire Fees,500,1100
+Baseball/Softball,Facilities,Season Field Maintenance/Rental,400,1200
+Field Hockey,Equipment,Stick,50,300
+Field Hockey,Protection,Shin Guards & Goggles,70,160
+Field Hockey,Footwear,Turf Shoes,60,140
+Field Hockey,Officiating,Season Umpire Fees,350,900
+Field Hockey,Facilities,Season Turf Rental,500,1500
+Basketball,Footwear,Basketball Shoes,80,180
+Basketball,Apparel,Uniform/Warm-ups,60,150
+Basketball,Equipment,Ball,30,70
+Basketball,Officiating,Season Referee Fees,400,950
+Basketball,Facilities,Season Gym Rental,600,2000
+Soccer,Footwear,Cleats,50,200
+Soccer,Protection,Shin Guards,15,50
+Soccer,Apparel,Uniform/Training Gear,70,200
+Soccer,Officiating,Season Referee Fees,450,1200
+Soccer,Facilities,Season Field Rental,400,1500
+Volleyball,Footwear,Court Shoes,70,150
+Volleyball,Protection,Knee Pads,25,50
+Volleyball,Apparel,Jersey/Spandex,50,120
+Volleyball,Officiating,Season Official Fees,350,800
+Volleyball,Facilities,Season Court Rental,500,1800
+Tennis,Equipment,Racket(s),100,400
+Tennis,Footwear,Court Shoes,70,160
+Tennis,Apparel,Tennis Whites/Athletic Wear,50,150
+Tennis,Officiating,Tournament Official Fees,200,600
+Tennis,Facilities,Season Court Membership/Rental,200,800
+Golf,Equipment,Clubs (Full Set),300,1200
+Golf,Equipment,Golf Bag,100,250
+Golf,Footwear,Golf Shoes,70,180
+Golf,Officiating,Tournament/Rules Officials,150,500
+Golf,Facilities,Season Greens Fees/Range Access,400,2500

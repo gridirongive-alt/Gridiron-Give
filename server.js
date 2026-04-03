@@ -36,7 +36,7 @@ const equipmentItemColumns = new Set(
 const hasEquipmentSortOrder = equipmentItemColumns.has("sort_order");
 const stripeWebhookSecret = String(process.env.STRIPE_WEBHOOK_SECRET || "").trim();
 
-const jsonParser = express.json({ limit: "5mb" });
+const jsonParser = express.json({ limit: "10mb" });
 
 app.use("/stripe/webhook", express.raw({ type: "application/json" }));
 app.use((req, res, next) => {
@@ -189,6 +189,13 @@ function hasControlChars(value) {
 
 function sanitizeSingleLineText(value) {
   return String(value || "").replace(/[\u0000-\u001f\u007f]/gu, "").trim();
+}
+
+function normalizeSportSelection(value) {
+  const normalized = sanitizeSingleLineText(value).toLowerCase();
+  if (normalized === "hockey") return "ice hockey";
+  if (normalized === "baseball/softball") return "baseball";
+  return normalized;
 }
 
 function assertNoControlChars(value, fieldName) {
@@ -439,7 +446,7 @@ async function sendCoachWelcomeEmail({ to, coachName, teamName, recipientMode = 
     <hr />
     <h3>Quick Start</h3>
     <ol>
-      <li>Set your team location and sport first.</li>
+      <li>Upload your team logo and review your team dashboard.</li>
       <li>Add players manually or by CSV.</li>
       <li>Use one consistent player email per athlete to preserve their Player ID.</li>
       <li>Check registration status in your roster table.</li>
@@ -559,8 +566,13 @@ function teamEquipmentTemplateRows(teamId) {
 function ensureTeamSharedEquipmentTemplates(team) {
   if (!team?.id) return [];
   let rows = teamEquipmentTemplateRows(team.id);
-  if (rows.length) return rows;
   const templates = equipmentTemplateForSport(team.sport);
+  const templateNames = new Set(templates.map((row) => String(row[0]).trim().toLowerCase()));
+  const matchingCount = rows.filter((row) => templateNames.has(String(row.name || "").trim().toLowerCase())).length;
+  if (rows.length && matchingCount === rows.length) return rows;
+  if (rows.length) {
+    db.prepare("DELETE FROM team_equipment_templates WHERE team_id=?").run(team.id);
+  }
   const tx = db.transaction(() => {
     templates.forEach((row, index) => {
       db.prepare(
@@ -1682,15 +1694,22 @@ app.get("/api/health/email", async (_req, res) => {
 });
 
 app.post("/api/coaches/signup", async (req, res) => {
-  const { name, email, password, teamName, recipientMode } = req.body || {};
+  const { name, email, password, teamName, teamLocation, teamSport, recipientMode } = req.body || {};
   let safeName;
   let safeEmail;
   let safeTeamName;
+  let safeTeamLocation;
+  let safeTeamSport;
   const payoutMode = String(recipientMode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
     safeName = assertSafeName(name, "Name");
     safeEmail = assertValidEmail(email);
     safeTeamName = assertSafeName(teamName, "Team Name");
+    safeTeamLocation = assertSafeName(teamLocation, "Team Location");
+    safeTeamSport = normalizeSportSelection(teamSport);
+    if (!["football", "ice hockey", "lacrosse", "baseball", "field hockey", "basketball", "soccer", "volleyball", "tennis", "golf"].includes(safeTeamSport)) {
+      throw new Error("Please choose your team sport.");
+    }
     if (!String(password || "").trim()) {
       throw new Error("Password is required.");
     }
@@ -1714,17 +1733,19 @@ app.post("/api/coaches/signup", async (req, res) => {
       passwordHash(String(password)),
       key
     );
-    db.prepare("INSERT INTO teams (id, coach_id, name, location, sport, recipient_mode) VALUES (?, ?, ?, '', '', ?)").run(
+    db.prepare("INSERT INTO teams (id, coach_id, name, location, sport, recipient_mode) VALUES (?, ?, ?, ?, ?, ?)").run(
       teamId,
       coachId,
       teamNameValue,
+      safeTeamLocation,
+      safeTeamSport,
       payoutMode
     );
     db.prepare("UPDATE coaches SET team_name=? WHERE id=?").run(teamNameValue, coachId);
   });
   tx();
   if (payoutMode === "coach") {
-    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: "football" });
+    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: safeTeamSport });
   }
   let welcomeEmailSent = false;
   let welcomeEmailError = "";
@@ -1802,11 +1823,14 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
             `SELECT
               d.id,
               d.amount,
-              d.checkout_total_amount,
-              d.application_fee_amount,
-              d.created_at,
-              p.first_name,
-              p.last_name,
+             d.checkout_total_amount,
+             d.application_fee_amount,
+             d.donor_name,
+             d.donor_email,
+             d.anonymous,
+             d.created_at,
+             p.first_name,
+             p.last_name,
               COALESCE(e.name, 'General Donation') AS equipment_name
              FROM donations d
              JOIN players p ON p.id = d.player_id
@@ -1822,18 +1846,14 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
 
 app.patch("/api/teams/:teamId", (req, res) => {
   const { teamId } = req.params;
-  const { name, location, sport, imageDataUrl } = req.body || {};
+  const { name, imageDataUrl } = req.body || {};
   const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId);
   if (!team) return res.status(404).json({ error: "Team not found." });
-  let nextSport;
   let nextName;
-  let nextLocation;
   let nextLogoDataUrl;
   const nextRecipientMode = String(team.recipient_mode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
-    nextSport = sanitizeSingleLineText(sport ?? team.sport ?? "").toLowerCase();
     nextName = assertSafeName(name || team.name, "Team Name");
-    nextLocation = assertSafeOptionalText(location || "", "Team Location", 120);
     nextLogoDataUrl =
       typeof imageDataUrl === "string" ? String(imageDataUrl).trim() : String(team.logo_data_url || "");
     if (
@@ -1842,19 +1862,16 @@ app.patch("/api/teams/:teamId", (req, res) => {
     ) {
       throw new Error("Team logo must be a valid image upload.");
     }
-    if (nextLogoDataUrl.length > 3_000_000) {
-      throw new Error("Team logo is too large.");
-    }
-    if (nextSport && !["football", "hockey", "lacrosse", "baseball"].includes(nextSport)) {
-      throw new Error("Sport selection is invalid.");
+    if (nextLogoDataUrl.length > 7_500_000) {
+      throw new Error("Team logo is too large. Use an image under 5 MB.");
     }
   } catch (error) {
     return res.status(400).json({ error: error.message || "Invalid team profile data." });
   }
   db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=?, logo_data_url=? WHERE id=?").run(
     nextName,
-    nextLocation,
-    nextSport,
+    String(team.location || ""),
+    String(team.sport || ""),
     nextRecipientMode,
     nextLogoDataUrl,
     teamId
@@ -1862,7 +1879,7 @@ app.patch("/api/teams/:teamId", (req, res) => {
   db.prepare("UPDATE coaches SET team_name=? WHERE id=?").run(nextName, team.coach_id);
   db.prepare("UPDATE players SET team_name=? WHERE team_id=?").run(nextName, teamId);
   if (nextRecipientMode === "coach") {
-    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: nextSport || "football" });
+    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: team.sport || "football" });
     syncTeamSharedEquipmentToPlayers(teamId);
   }
   return res.json({ ok: true });

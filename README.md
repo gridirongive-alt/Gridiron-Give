@@ -100,10 +100,6 @@ Notes:
 - Coaches and players each have a `PW_Recovery_Key` column in DB.
 - Never hardcode app passwords in source files.
 
-## Demo Login Seed
-- Coach email: `coach@northview.org`
-- Coach password: `password123`
-
 ## Notes
 - Existing frontend pages still use local browser storage logic.  
 - Backend API + persistent DB are now available and ready for frontend migration.

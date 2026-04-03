@@ -294,7 +294,7 @@ function renderGeneralDonationCard() {
           </div>
           <p class="equipment-card-progress-copy">${money(current.raisedTotal)} of ${money(current.goalTotal)} raised</p>
         </div>
-        <button class="btn btn-money equipment-card-cta" type="button">Give To Athlete</button>
+        <button class="btn btn-donate equipment-card-cta" type="button">Give To Athlete</button>
       </div>
     </div>
   `;

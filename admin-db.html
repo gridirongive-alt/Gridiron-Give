@@ -40,7 +40,22 @@
 
       <section class="card section-top-gap">
         <h2 class="section-title">SQL Console</h2>
-        <textarea id="sql-input" class="sql-editor section-top-gap-sm" rows="6">SELECT * FROM players LIMIT 25;</textarea>
+        <div class="sql-builder-row section-top-gap-sm">
+          <label class="sql-statement-picker">
+            Statement
+            <select id="sql-statement-type">
+              <option value="SELECT" selected>SELECT</option>
+              <option value="INSERT">INSERT</option>
+              <option value="UPDATE">UPDATE</option>
+              <option value="DELETE">DELETE</option>
+              <option value="WITH">WITH</option>
+            </select>
+          </label>
+          <p class="subtle-copy sql-template-note">
+            Start with a guided template and replace each `#placeholder` with your real table, column, or value.
+          </p>
+        </div>
+        <textarea id="sql-input" class="sql-editor section-top-gap-sm" rows="6">SELECT * FROM #table_name LIMIT 25;</textarea>
         <div class="equipment-actions section-top-gap-sm">
           <div class="equipment-actions">
             <button class="btn btn-primary" id="run-sql" type="button">Run SQL</button>
@@ -140,6 +155,7 @@
     </div>
 
     <script>
+      const sqlStatementType = document.getElementById("sql-statement-type");
       const sqlInput = document.getElementById("sql-input");
       const sqlStatus = document.getElementById("sql-status");
       const roleBanner = document.getElementById("role-banner");
@@ -170,6 +186,13 @@
       const selectedRowIds = new Set();
       let confirmResolver = null;
       let adminSession = { authenticated: false, role: "readonly", username: "" };
+      const sqlTemplates = {
+        SELECT: "SELECT * FROM #table_name LIMIT 25;",
+        INSERT: "INSERT INTO #table_name (#column_name_1, #column_name_2)\nVALUES ('#value_1', '#value_2');",
+        UPDATE: "UPDATE #table_name\nSET #column_name = '#new_value'\nWHERE #id_column = '#row_id';",
+        DELETE: "DELETE FROM #table_name\nWHERE #id_column = '#row_id';",
+        WITH: "WITH #query_name AS (\n  SELECT * FROM #table_name\n)\nSELECT * FROM #query_name LIMIT 25;"
+      };
 
       function canWrite() {
         return adminSession?.role === "full";
@@ -197,6 +220,21 @@
       function setStatus(message, isError = false) {
         sqlStatus.textContent = message;
         sqlStatus.style.color = isError ? "#b91c1c" : "";
+      }
+
+      function applySqlTemplate(statementType, force = false) {
+        const template = sqlTemplates[statementType] || sqlTemplates.SELECT;
+        const current = String(sqlInput.value || "").trim();
+        if (!force && current && current !== sqlTemplates.SELECT && current !== template) return;
+        sqlInput.value = template;
+        setStatus(`Template loaded for ${statementType}. Replace each #placeholder before running.`);
+      }
+
+      function syncStatementPicker(sql) {
+        const firstWord = String(sql || "").trim().split(/\s+/)[0]?.toUpperCase() || "SELECT";
+        if (sqlStatementType && sqlTemplates[firstWord]) {
+          sqlStatementType.value = firstWord;
+        }
       }
 
       function escapeSqlValue(value) {
@@ -386,6 +424,10 @@
       }
 
       async function runSql(sql) {
+        if (/#\w+/.test(sql)) {
+          setStatus("Replace each #placeholder with a real table name, column, or value before running SQL.", true);
+          return;
+        }
         try {
           const res = await fetch("/api/admin/sql", {
             method: "POST",
@@ -443,6 +485,7 @@
         const table = filterTable.value;
         const limit = Math.min(500, Math.max(1, Number(filterLimit.value || 100)));
         const sql = `SELECT * FROM ${table} ORDER BY rowid DESC LIMIT ${limit};`;
+        syncStatementPicker(sql);
         sqlInput.value = sql;
         await runSql(sql);
       }
@@ -466,13 +509,17 @@
       }
 
       document.getElementById("run-sql").addEventListener("click", () => runSql(sqlInput.value));
+      sqlStatementType.addEventListener("change", () => {
+        applySqlTemplate(sqlStatementType.value, true);
+      });
       document.getElementById("clear-sql").addEventListener("click", () => {
-        sqlInput.value = "";
-        setStatus("SQL editor cleared.");
+        applySqlTemplate(sqlStatementType.value, true);
+        setStatus("Template reset.");
       });
       document.getElementById("load-table").addEventListener("click", loadCurrentTable);
       document.getElementById("apply-filter").addEventListener("click", () => {
         const sql = buildFilterSql();
+        syncStatementPicker(sql);
         sqlInput.value = sql;
         runSql(sql);
       });
@@ -483,6 +530,7 @@
       document.querySelectorAll(".chip-btn").forEach((button) => {
         button.addEventListener("click", () => {
           const sql = button.dataset.query || "";
+          syncStatementPicker(sql);
           sqlInput.value = sql;
           runSql(sql);
         });
@@ -520,6 +568,8 @@
           updateSelectionUI();
         }
       });
+
+      applySqlTemplate("SELECT", true);
 
       tableBody.addEventListener("input", (event) => {
         const target = event.target;
