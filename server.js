@@ -607,13 +607,12 @@ function teamEquipmentTemplateRows(teamId) {
     .all(teamId);
 }
 
-function ensureTeamSharedEquipmentTemplates(team) {
+function ensureTeamSharedEquipmentTemplates(team, options = {}) {
   if (!team?.id) return [];
+  const forceReseed = Boolean(options.forceReseed);
   let rows = teamEquipmentTemplateRows(team.id);
+  if (rows.length && !forceReseed) return rows;
   const templates = equipmentTemplateForSport(team.sport);
-  const templateNames = new Set(templates.map((row) => String(row[0]).trim().toLowerCase()));
-  const matchingCount = rows.filter((row) => templateNames.has(String(row.name || "").trim().toLowerCase())).length;
-  if (rows.length && matchingCount === rows.length) return rows;
   const priorRowsByOrder = new Map(
     rows.map((row, index) => [Number(row.sort_order ?? index), { goal: Number(row.goal || 0), enabled: Number(row.enabled) === 0 ? 0 : 1 }])
   );
@@ -2035,14 +2034,24 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
 
 app.patch("/api/teams/:teamId", (req, res) => {
   const { teamId } = req.params;
-  const { name, imageDataUrl } = req.body || {};
+  const { name, imageDataUrl, location, sport } = req.body || {};
   const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId);
   if (!team) return res.status(404).json({ error: "Team not found." });
   let nextName;
   let nextLogoDataUrl;
+  let nextLocation;
+  let nextSport;
   const nextRecipientMode = String(team.recipient_mode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
     nextName = assertSafeName(name || team.name, "Team Name");
+    nextLocation =
+      typeof location === "string" && String(location).trim()
+        ? assertSafeOptionalText(location, "Team Location", 120)
+        : String(team.location || "");
+    nextSport =
+      typeof sport === "string" && String(sport).trim()
+        ? normalizeSportSelection(assertSafeOptionalText(sport, "Team Sport", 40))
+        : String(team.sport || "");
     nextLogoDataUrl =
       typeof imageDataUrl === "string" ? String(imageDataUrl).trim() : String(team.logo_data_url || "");
     if (
@@ -2057,10 +2066,11 @@ app.patch("/api/teams/:teamId", (req, res) => {
   } catch (error) {
     return res.status(400).json({ error: error.message || "Invalid team profile data." });
   }
+  const sportChanged = String(nextSport || "") !== String(team.sport || "");
   db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=?, logo_data_url=? WHERE id=?").run(
     nextName,
-    String(team.location || ""),
-    String(team.sport || ""),
+    nextLocation,
+    nextSport,
     nextRecipientMode,
     nextLogoDataUrl,
     teamId
@@ -2068,7 +2078,7 @@ app.patch("/api/teams/:teamId", (req, res) => {
   db.prepare("UPDATE coaches SET team_name=? WHERE id=?").run(nextName, team.coach_id);
   db.prepare("UPDATE players SET team_name=? WHERE team_id=?").run(nextName, teamId);
   if (nextRecipientMode === "coach") {
-    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: team.sport || "football" });
+    ensureTeamSharedEquipmentTemplates({ id: teamId, sport: nextSport || "football" }, { forceReseed: sportChanged });
     syncTeamSharedEquipmentToPlayers(teamId);
   }
   return res.json({ ok: true });
