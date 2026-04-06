@@ -323,6 +323,9 @@ function updateTeam(teamId, updates) {
   team.name = String(updates.name || team.name || "").trim();
   team.location = String(updates.location || team.location || "").trim();
   team.sport = String(updates.sport || team.sport || "football").toLowerCase();
+  if (typeof updates.imageDataUrl === "string") {
+    team.logoDataUrl = String(updates.imageDataUrl || "").trim();
+  }
   const roster = data.players.filter((item) => item.teamId === team.id);
   roster.forEach((player) => {
     if (!Array.isArray(player.equipment) || !player.equipment.length || previousSport !== team.sport) {
@@ -428,7 +431,13 @@ function findSearchResults(query, kind) {
   if (kind === "team") {
     return data.teams
       .filter((team) => team.name.toLowerCase().includes(q))
-      .map((team) => ({ teamId: team.id, teamName: team.name }));
+      .map((team) => ({
+        teamId: team.id,
+        teamName: team.name,
+        teamSport: team.sport || "",
+        teamLocation: team.location || "",
+        logoDataUrl: team.logoDataUrl || ""
+      }));
   }
   return data.players
     .map((player) => {
@@ -439,6 +448,9 @@ function findSearchResults(query, kind) {
         playerName: `${player.firstName} ${player.lastName}`.trim(),
         teamId: player.teamId,
         teamName: team?.name || "Unknown Team",
+        teamSport: team?.sport || "",
+        teamLocation: team?.location || "",
+        logoDataUrl: team?.logoDataUrl || ""
       };
     })
     .filter((item) => item.playerName.toLowerCase().includes(q));

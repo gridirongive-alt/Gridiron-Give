@@ -26,6 +26,8 @@ const featuredTeam = document.getElementById("featured-player-team");
 const featuredProgressFill = document.getElementById("featured-player-progress-fill");
 const featuredProgressCopy = document.getElementById("featured-player-progress-copy");
 const featuredLink = document.getElementById("featured-player-link");
+const preferBackendOnLocalhost =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 async function apiRequest(path, options = {}) {
   let response;
@@ -239,18 +241,76 @@ applyCoachRecipientMode("coach");
 syncCoachLocationInputs();
 coachTeamOutsideUs?.addEventListener("change", syncCoachLocationInputs);
 
-function buildSuggestionItem(text, onClick) {
+function buildSuggestionItem({ title, meta = "", logoDataUrl = "", fallback = "" }, onClick) {
   const li = document.createElement("li");
   li.className = "suggestion-item";
   li.setAttribute("role", "button");
   li.tabIndex = 0;
-  li.textContent = text;
+  li.innerHTML = `
+    <div class="suggestion-item-row">
+      ${
+        logoDataUrl
+          ? `<div class="suggestion-logo"><img src="${logoDataUrl}" alt="" /></div>`
+          : `<div class="suggestion-logo suggestion-logo-fallback" aria-hidden="true">${fallback || "G"}</div>`
+      }
+      <div class="suggestion-copy">
+        <span class="suggestion-title">${title}</span>
+        ${meta ? `<span class="suggestion-meta">${meta}</span>` : ""}
+      </div>
+    </div>
+  `;
   li.addEventListener("mousedown", (event) => event.preventDefault());
   li.addEventListener("click", onClick);
   li.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") onClick();
   });
   return li;
+}
+
+async function ensurePublicTeamIndex() {
+  return new Map();
+}
+
+async function enrichSearchMatches(matches) {
+  const teamIds = Array.from(
+    new Set(
+      (Array.isArray(matches) ? matches : [])
+        .map((item) => String(item.teamId || "").trim())
+        .filter(Boolean)
+    )
+  );
+
+  const detailEntries = await Promise.all(
+    teamIds.map(async (teamId) => {
+      try {
+        const payload = await apiRequest(`/api/public/teams/${encodeURIComponent(teamId)}`);
+        const team = payload?.team || {};
+        return [
+          teamId,
+          {
+            teamName: String(team.name || ""),
+            teamSport: String(team.sport || ""),
+            teamLocation: String(team.location || ""),
+            logoDataUrl: String(team.logo_data_url || "")
+          }
+        ];
+      } catch {
+        return [teamId, null];
+      }
+    })
+  );
+
+  const teamIndex = new Map(detailEntries);
+  return matches.map((item) => {
+    const teamMeta = teamIndex.get(String(item.teamId || "")) || null;
+    return {
+      ...item,
+      teamName: item.teamName || teamMeta?.teamName || "",
+      teamSport: item.teamSport || teamMeta?.teamSport || "",
+      teamLocation: item.teamLocation || teamMeta?.teamLocation || "",
+      logoDataUrl: item.logoDataUrl || teamMeta?.logoDataUrl || ""
+    };
+  });
 }
 
 function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
@@ -271,17 +331,29 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
       if (kind === "player") {
         const rows = await apiRequest(`/api/search/players?q=${encodeURIComponent(query)}`);
         matches = rows.map((row) => ({
+          teamId: row.team_id,
           playerPublicId: row.player_public_id,
           playerName: `${row.first_name} ${row.last_name}`,
-          teamName: row.team_name
+          teamName: row.team_name,
+          teamSport: row.team_sport || "",
+          teamLocation: row.team_location || "",
+          logoDataUrl: row.team_logo_data_url || ""
         }));
       } else {
         const rows = await apiRequest(`/api/search/teams?q=${encodeURIComponent(query)}`);
-        matches = rows.map((row) => ({ teamId: row.id, teamName: row.name }));
+        matches = rows.map((row) => ({
+          teamId: row.id,
+          teamName: row.name,
+          teamSport: row.sport || "",
+          teamLocation: row.location || "",
+          logoDataUrl: row.logo_data_url || ""
+        }));
       }
     } catch {
-      matches = dataApi.findSearchResults(query, kind);
+      matches = preferBackendOnLocalhost ? [] : dataApi.findSearchResults(query, kind);
     }
+
+    matches = await enrichSearchMatches(matches);
 
     matches = matches.slice(0, 5);
     if (!matches.length) {
@@ -290,11 +362,11 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
     }
 
     matches.forEach((item) => {
-      const label = formatter(item);
+      const suggestion = formatter(item);
       list.appendChild(
-        buildSuggestionItem(label, () => {
-          if (typeof onSelect === "function") onSelect(item, label);
-          else input.value = label;
+        buildSuggestionItem(suggestion, () => {
+          if (typeof onSelect === "function") onSelect(item, suggestion.title);
+          else input.value = suggestion.title;
           list.hidden = true;
         })
       );
@@ -311,7 +383,12 @@ setupAutocomplete(
   "player-search",
   "player-suggestions",
   "player",
-  (item) => `${item.playerName} — ${item.teamName}`,
+  (item) => ({
+    title: item.playerName,
+    meta: [item.teamName, item.teamSport, item.teamLocation].filter(Boolean).join(" • "),
+    logoDataUrl: item.logoDataUrl,
+    fallback: String(item.teamName || item.playerName || "G").trim().charAt(0).toUpperCase()
+  }),
   (item, label) => {
     const playerPublicId = encodeURIComponent(item.playerPublicId || "");
     if (!playerPublicId) {
@@ -326,7 +403,12 @@ setupAutocomplete(
   "team-search",
   "team-suggestions",
   "team",
-  (item) => item.teamName,
+  (item) => ({
+    title: item.teamName,
+    meta: [item.teamSport, item.teamLocation].filter(Boolean).join(" • "),
+    logoDataUrl: item.logoDataUrl,
+    fallback: String(item.teamName || "G").trim().charAt(0).toUpperCase()
+  }),
   (item, label) => {
     const teamId = encodeURIComponent(item.teamId || "");
     if (!teamId) {
@@ -392,7 +474,7 @@ coachSignupForm?.addEventListener("submit", async (event) => {
     window.location.href = "/coach-dashboard.html";
   } catch (error) {
     // Fallback to local-only mode if backend is unavailable.
-    if (error.isNetwork) {
+    if (error.isNetwork && !preferBackendOnLocalhost) {
       try {
         const localCoachId = dataApi.createCoachAccount({
           name: formData.get("coachName"),
@@ -474,7 +556,7 @@ playerSignupForm?.addEventListener("submit", async (event) => {
     dataApi.setSession("player", localPlayerId, created.playerId || null);
     window.location.href = "/player-dashboard.html";
   } catch (error) {
-    if (error.isNetwork) {
+    if (error.isNetwork && !preferBackendOnLocalhost) {
       try {
         const localPlayerId = dataApi.activatePlayerAccount({
           playerId: formData.get("playerId"),
@@ -506,7 +588,7 @@ coachSigninForm?.addEventListener("submit", async (event) => {
     dataApi.setSession("coach", backendCoachId, backendCoachId);
     window.location.href = "/coach-dashboard.html";
   } catch (error) {
-    if (error.isNetwork) {
+    if (error.isNetwork && !preferBackendOnLocalhost) {
       // Fallback to local-only auth if backend is unavailable.
       const localCoachId = dataApi.authenticateCoach(
         formData.get("coachLoginEmail"),
@@ -542,7 +624,7 @@ playerSigninForm?.addEventListener("submit", async (event) => {
     dataApi.setSession("player", localPlayerId, result.playerId || null);
     window.location.href = "/player-dashboard.html";
   } catch (error) {
-    if (error.isNetwork) {
+    if (error.isNetwork && !preferBackendOnLocalhost) {
       const localPlayerId = dataApi.authenticatePlayer(
         formData.get("playerLoginEmail"),
         formData.get("playerLoginPassword")

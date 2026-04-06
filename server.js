@@ -370,6 +370,18 @@ function isLocalStripeMockRequest(req) {
   );
 }
 
+function logLocalStripeDebug(reqOrLabel, message, details = {}) {
+  const shouldLog =
+    typeof reqOrLabel === "string" ? !isProduction : isLocalStripeMockRequest(reqOrLabel);
+  if (!shouldLog) return;
+  const label =
+    typeof reqOrLabel === "string"
+      ? reqOrLabel
+      : `${String(reqOrLabel?.method || "REQ")} ${String(reqOrLabel?.path || "")}`;
+  // eslint-disable-next-line no-console
+  console.log(`[local-stripe-debug] ${label} :: ${message}`, details);
+}
+
 function ensureMockPlayerStripeState(playerId) {
   const player = db
     .prepare("SELECT id, stripe_account_id FROM players WHERE id=?")
@@ -650,25 +662,67 @@ function syncTeamSharedEquipmentToPlayers(teamId) {
   const tx = db.transaction(() => {
     players.forEach((player) => {
       const existingRows = db
-        .prepare("SELECT id, name, category, raised FROM equipment_items WHERE player_id=?")
+        .prepare(
+          `SELECT id, name, category, price_range, goal, raised, enabled, sort_order
+           FROM equipment_items
+           WHERE player_id=?
+           ORDER BY sort_order ASC, rowid ASC`
+        )
         .all(player.id);
-      const raisedByKey = new Map(
-        existingRows.map((row) => [
-          `${String(row.name || "").trim().toLowerCase()}::${String(row.category || "").trim().toLowerCase()}`,
-          Number(row.raised || 0)
-        ])
-      );
-      db.prepare("DELETE FROM equipment_items WHERE player_id=?").run(player.id);
       templates.forEach((item, index) => {
-        const key = `${String(item.name || "").trim().toLowerCase()}::${String(item.category || "")
-          .trim()
-          .toLowerCase()}`;
-        const raised = raisedByKey.get(key) || 0;
+        const existing = existingRows[index];
         if (hasEquipmentSortOrder) {
+          if (existing) {
+            db.prepare(
+              `UPDATE equipment_items
+               SET name=?, category=?, price_range=?, goal=?, enabled=?, sort_order=?
+               WHERE id=?`
+            ).run(
+              String(item.name || "Equipment"),
+              String(item.category || "General"),
+              String(item.price_range || ""),
+              Number(item.goal || 0),
+              Number(item.enabled) === 0 ? 0 : 1,
+              Number(item.sort_order ?? index),
+              existing.id
+            );
+          } else {
+            db.prepare(
+              `INSERT INTO equipment_items
+              (id, player_id, name, category, price_range, goal, raised, enabled, sort_order)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            ).run(
+              uid("eq"),
+              player.id,
+              String(item.name || "Equipment"),
+              String(item.category || "General"),
+              String(item.price_range || ""),
+              Number(item.goal || 0),
+              0,
+              Number(item.enabled) === 0 ? 0 : 1,
+              Number(item.sort_order ?? index)
+            );
+          }
+          return;
+        }
+        if (existing) {
+          db.prepare(
+            `UPDATE equipment_items
+             SET name=?, category=?, price_range=?, goal=?, enabled=?
+             WHERE id=?`
+          ).run(
+            String(item.name || "Equipment"),
+            String(item.category || "General"),
+            String(item.price_range || ""),
+            Number(item.goal || 0),
+            Number(item.enabled) === 0 ? 0 : 1,
+            existing.id
+          );
+        } else {
           db.prepare(
             `INSERT INTO equipment_items
-            (id, player_id, name, category, price_range, goal, raised, enabled, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            (id, player_id, name, category, price_range, goal, raised, enabled)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
           ).run(
             uid("eq"),
             player.id,
@@ -676,26 +730,26 @@ function syncTeamSharedEquipmentToPlayers(teamId) {
             String(item.category || "General"),
             String(item.price_range || ""),
             Number(item.goal || 0),
-            raised,
-            Number(item.enabled) === 0 ? 0 : 1,
-            Number(item.sort_order ?? index)
+            0,
+            Number(item.enabled) === 0 ? 0 : 1
           );
+        }
+      });
+      const extraRows = existingRows.slice(templates.length);
+      extraRows.forEach((row, extraIndex) => {
+        if (hasEquipmentSortOrder) {
+          db.prepare(
+            `UPDATE equipment_items
+             SET enabled=0, goal=0, sort_order=?
+             WHERE id=?`
+          ).run(templates.length + extraIndex, row.id);
           return;
         }
         db.prepare(
-          `INSERT INTO equipment_items
-          (id, player_id, name, category, price_range, goal, raised, enabled)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run(
-          uid("eq"),
-          player.id,
-          String(item.name || "Equipment"),
-          String(item.category || "General"),
-          String(item.price_range || ""),
-          Number(item.goal || 0),
-          raised,
-          Number(item.enabled) === 0 ? 0 : 1
-        );
+          `UPDATE equipment_items
+           SET enabled=0, goal=0
+           WHERE id=?`
+        ).run(row.id);
       });
     });
   });
@@ -773,6 +827,16 @@ function applyDonationToDatabase({
   checkoutTotalAmount = 0,
   applicationFeeAmount = 0
 }) {
+  logLocalStripeDebug("applyDonationToDatabase", "begin", {
+    playerId,
+    teamId,
+    donationType,
+    equipmentItemId,
+    donorEmail,
+    amount,
+    payoutRecipientType,
+    payoutRecipientId
+  });
   if (!donorName || !donorEmail || !amount) {
     throw new Error("Missing required donation fields.");
   }
@@ -790,6 +854,11 @@ function applyDonationToDatabase({
     const safeTeamId = String(teamId || "").trim();
     if (!safeTeamId) throw new Error("Team is required for general team donation.");
     const players = db.prepare("SELECT id FROM players WHERE team_id=? ORDER BY first_name, last_name").all(safeTeamId);
+    logLocalStripeDebug("applyDonationToDatabase", "team-general roster", {
+      safeTeamId,
+      playerCount: players.length,
+      totalAmount: value
+    });
     if (!players.length) throw new Error("No players are available for this team donation.");
     const totalCents = Math.round(value * 100);
     const baseShare = Math.floor(totalCents / players.length);
@@ -898,6 +967,12 @@ function applyDonationToDatabase({
       });
     });
     tx();
+    logLocalStripeDebug("applyDonationToDatabase", "general committed", {
+      playerId,
+      donationTeamId,
+      donationIds,
+      allocationCount: allocations.length
+    });
     return {
       donationId: donationIds[0],
       donationIds,
@@ -953,6 +1028,13 @@ function applyDonationToDatabase({
     );
   });
   tx();
+  logLocalStripeDebug("applyDonationToDatabase", "equipment committed", {
+    playerId,
+    donationTeamId,
+    donationId,
+    equipmentItemId,
+    amount: value
+  });
   return { donationId, amount: value };
 }
 
@@ -1574,6 +1656,18 @@ async function createCheckoutSessionHandler(req, res) {
       resolvedStripeAccountId = payoutContext.stripeAccountId;
     }
 
+    logLocalStripeDebug(req, "checkout resolved", {
+      localStripeMock,
+      donationType,
+      playerId,
+      teamId: resolvedTeamId,
+      payoutRecipientType,
+      payoutRecipientId,
+      resolvedStripeAccountId,
+      checkoutTotalCents: split.checkoutTotalCents,
+      playerAmountCents: split.playerAmountCents
+    });
+
     if (localStripeMock) {
       let resolvedEquipmentItemId = String(equipmentItemId || "").trim();
       if (!resolvedEquipmentItemId && donationType === "equipment" && playerId && teamEquipmentName) {
@@ -1599,6 +1693,11 @@ async function createCheckoutSessionHandler(req, res) {
         stripeDestinationAccountId: resolvedStripeAccountId || `mock_destination_${payoutRecipientType}_${payoutRecipientId || "local"}`,
         checkoutTotalAmount: split.checkoutTotalCents / 100,
         applicationFeeAmount: split.applicationFeeCents / 100
+      });
+      const donationCount = db.prepare("SELECT COUNT(*) AS count FROM donations").get().count;
+      logLocalStripeDebug(req, "mock checkout stored", {
+        donationResult,
+        donationCount
       });
       return res.json({
         ok: true,
@@ -2033,6 +2132,13 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
           )
           .all(team.id)
       : [];
+  logLocalStripeDebug(req, "coach dashboard loaded", {
+    coachId,
+    teamId: team?.id || "",
+    recipientMode: team?.recipient_mode || "",
+    playerCount: players.length,
+    transactionCount: transactions.length
+  });
   return res.json({ coach, team, players, teamEquipment, transactions });
 });
 
@@ -2537,7 +2643,16 @@ app.get("/api/search/players", (req, res) => {
   if (!q) return res.json([]);
   const rows = db
     .prepare(
-      `SELECT p.id, p.player_public_id, p.first_name, p.last_name, t.id AS team_id, t.name AS team_name
+      `SELECT
+        p.id,
+        p.player_public_id,
+        p.first_name,
+        p.last_name,
+        t.id AS team_id,
+        t.name AS team_name,
+        t.sport AS team_sport,
+        t.location AS team_location,
+        t.logo_data_url AS team_logo_data_url
        FROM players p
        JOIN teams t ON t.id = p.team_id
        WHERE lower(p.first_name || ' ' || p.last_name) LIKE lower(?)
@@ -2552,7 +2667,13 @@ app.get("/api/search/teams", (req, res) => {
   const q = String(req.query.q || "").trim();
   if (!q) return res.json([]);
   const rows = db
-    .prepare("SELECT id, name FROM teams WHERE lower(name) LIKE lower(?) ORDER BY name LIMIT 10")
+    .prepare(
+      `SELECT id, name, sport, location, logo_data_url
+       FROM teams
+       WHERE lower(name) LIKE lower(?)
+       ORDER BY name
+       LIMIT 10`
+    )
     .all(`%${q}%`);
   return res.json(rows);
 });
@@ -2560,7 +2681,7 @@ app.get("/api/search/teams", (req, res) => {
 app.get("/api/public/teams", (_req, res) => {
   const rows = db
     .prepare(
-      `SELECT id, name, sport
+      `SELECT id, name, sport, location, logo_data_url
        FROM teams
        ORDER BY name
        LIMIT 100`

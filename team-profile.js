@@ -32,6 +32,8 @@ let state = {
 };
 let selectedMode = "team-general";
 let selectedEquipmentName = "";
+const preferBackendOnLocalhost =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 function showAction(message, isError = false) {
   if (typeof window.showActionMessage === "function") {
@@ -110,22 +112,46 @@ function computeCheckoutAmounts(dollars, coverFees) {
 
 async function loadTeam() {
   if (!teamId) throw new Error("Missing team id.");
-  const data = await apiRequest(`/api/public/teams/${encodeURIComponent(teamId)}`);
-  state.team = data.team;
-  state.players = data.players || [];
-  state.teamEquipment = data.teamEquipment || [];
-  state.totalTeamGoal = Number(data.totalTeamGoal || 0);
-  state.totalTeamRaised = Number(data.totalTeamRaised || 0);
+  try {
+    const data = await apiRequest(`/api/public/teams/${encodeURIComponent(teamId)}`);
+    state.team = data.team;
+    state.players = data.players || [];
+    state.teamEquipment = data.teamEquipment || [];
+    state.totalTeamGoal = Number(data.totalTeamGoal || 0);
+    state.totalTeamRaised = Number(data.totalTeamRaised || 0);
+    return;
+  } catch (error) {
+    if (preferBackendOnLocalhost) throw error;
+  }
+
+  const local = api.getTeamRoster(teamId);
+  if (!local?.team) throw new Error("Team not found.");
+  state.team = local.team;
+  state.players = local.players || [];
+  state.teamEquipment = [];
+  state.totalTeamGoal = state.players.reduce((sum, player) => sum + Number(player.goalTotal || 0), 0);
+  state.totalTeamRaised = state.players.reduce((sum, player) => sum + Number(player.raisedTotal || 0), 0);
 }
 
 function renderTop() {
   if (!teamTop || !state.team) return;
   const teamProgress = progress(state.totalTeamRaised, state.totalTeamGoal);
+  const teamLogo = String(state.team.logo_data_url || "");
   teamTop.innerHTML = `
-    <div>
-      <p class="eyebrow">Team View</p>
-      <h1 class="dashboard-title">${state.team.name}</h1>
-      <p class="dashboard-copy">${state.team.location || "Location not set"}${state.team.sport ? ` • ${state.team.sport}` : ""}</p>
+    <div class="team-hero-identity">
+      ${
+        teamLogo
+          ? `<div class="team-hero-logo"><img src="${teamLogo}" alt="${state.team.name} logo" /></div>`
+          : `<div class="team-hero-logo team-hero-logo-fallback" aria-hidden="true">${String(state.team.name || "T")
+              .trim()
+              .charAt(0)
+              .toUpperCase()}</div>`
+      }
+      <div>
+        <p class="eyebrow">Team View</p>
+        <h1 class="dashboard-title">${state.team.name}</h1>
+        <p class="dashboard-copy">${state.team.location || "Location not set"}${state.team.sport ? ` • ${state.team.sport}` : ""}</p>
+      </div>
     </div>
     <div class="stats-row">
       <div class="stat-pill"><span>${money(state.totalTeamRaised)}</span><small>Raised</small></div>
@@ -148,7 +174,6 @@ function renderRoster() {
     const playerHref = `/player-profile.html?playerId=${encodeURIComponent(player.player_public_id)}`;
     tr.innerHTML = `
       <td><a class="table-name-link" href="${playerHref}">${player.first_name} ${player.last_name}</a></td>
-      <td>-</td>
       <td>${money(player.raisedTotal)}</td>
       <td>${money(player.goalTotal)}</td>
       <td><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div></td>
@@ -318,6 +343,13 @@ donationForm?.addEventListener("submit", async (event) => {
         anonymous: Boolean(formData.get("anonymous"))
       })
     });
+    if (preferBackendOnLocalhost) {
+      console.log("[local-stripe-debug] team donation checkout response", {
+        mode: selectedMode,
+        teamId: state.team?.id || "",
+        checkout
+      });
+    }
     if (checkout?.mock) {
       closeDonationModal();
       donationForm.reset();
