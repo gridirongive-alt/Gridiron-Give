@@ -392,6 +392,18 @@ main {
   background: linear-gradient(160deg, rgba(47, 128, 255, 0.04), rgba(10, 47, 119, 0.02));
 }
 
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.hero-content {
+  text-align: left;
+  padding-top: 10px;
+}
+
 .eyebrow {
   margin: 0;
   color: #2a7dff;
@@ -410,14 +422,21 @@ h1 {
   letter-spacing: -0.02em;
 }
 
+.hero-content h1 {
+  margin-left: 0;
+  margin-right: 0;
+}
+
 .hero-copy {
-  margin: 0 auto 28px;
-  max-width: 62ch;
+  margin: 0 0 22px;
+  max-width: 58ch;
   color: var(--muted);
+  font-size: 1.03rem;
+  line-height: 1.7;
 }
 
 .donor-direction {
-  margin: -14px auto 18px;
+  margin: 0 0 18px;
   max-width: 62ch;
   color: #31557f;
   background: #edf5ff;
@@ -425,6 +444,44 @@ h1 {
   border-radius: 12px;
   padding: 10px 12px;
   font-size: 0.92rem;
+}
+
+.hero-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #d6e5fb;
+  color: #1c4f9e;
+  font-size: 0.9rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(24, 76, 155, 0.06);
+}
+
+.hero-search-card {
+  border: 1px solid #d9e7fa;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 255, 0.96));
+  border-radius: 24px;
+  padding: 22px;
+  text-align: left;
+  box-shadow: 0 18px 30px rgba(22, 72, 146, 0.08);
+}
+
+.hero-card-kicker {
+  margin: 0 0 8px;
+  color: #12335f;
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .featured-player-card {
@@ -449,10 +506,39 @@ h1 {
 
 .search-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
-  margin: 0 auto;
-  max-width: 820px;
+  margin: 0;
+  max-width: none;
+}
+
+.hero-proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.hero-proof-card {
+  padding: 18px 18px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(246, 250, 255, 0.96), rgba(236, 245, 255, 0.94));
+  border: 1px solid #d9e8fb;
+  text-align: left;
+}
+
+.hero-proof-value {
+  margin: 0 0 6px;
+  color: #173e7b;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.hero-proof-copy {
+  margin: 0;
+  color: #5e7393;
+  font-size: 0.92rem;
+  line-height: 1.55;
 }
 
 .search-field {
@@ -1803,6 +1889,40 @@ a.table-name-link {
   min-width: 140px;
 }
 
+.csv-progress-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f7fbff, #eef5ff);
+  border: 1px solid #dbe8fb;
+}
+
+.csv-progress-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: #dbe7f8;
+  overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(18, 45, 95, 0.08);
+}
+
+.csv-progress-fill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f7dff, #47b3ff);
+  transition: width 180ms ease;
+}
+
+.csv-progress-meta {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #476588;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .action-message-modal .intro-spinner {
   border-color: rgba(31, 111, 235, 0.25);
   border-top-color: #1f6feb;
@@ -2012,6 +2132,11 @@ a.table-name-link {
     grid-template-columns: 1fr;
   }
 
+  .hero-grid,
+  .hero-proof-grid {
+    grid-template-columns: 1fr;
+  }
+
   .site-footer-inner {
     width: min(960px, 94vw);
   }
@@ -2032,6 +2157,14 @@ a.table-name-link {
   .search-panel {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .hero-content {
+    padding-top: 0;
+  }
+
+  .hero-search-card {
+    padding: 18px;
   }
 
   .home-page .site-header {
@@ -2166,10 +2299,15 @@ a.table-name-link {
     padding: 18px;
   }
 
+  .hero-search-card,
+  .hero-proof-card {
+    border-radius: 18px;
+  }
+
   .home-page .hero h1 {
     font-size: clamp(1.8rem, 10vw, 2.4rem);
     line-height: 1.08;
-    max-width: 12ch;
+    max-width: 11ch;
   }
 
   .modal-header h2 {
@@ -2188,10 +2326,6 @@ a.table-name-link {
 
   .home-page .hero-copy {
     margin-bottom: 14px;
-  }
-
-  .home-page .donor-direction {
-    display: none;
   }
 
   .featured-player-card .btn {

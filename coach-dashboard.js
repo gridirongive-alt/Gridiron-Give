@@ -24,6 +24,10 @@ const csvPreviewBody = document.getElementById("csv-preview-body");
 const csvAddRowButton = document.getElementById("csv-add-row");
 const csvConfirmSaveButton = document.getElementById("csv-confirm-save");
 const csvProcessingBackdrop = document.getElementById("csv-processing-backdrop");
+const csvProcessingCopy = document.getElementById("csv-processing-copy");
+const csvProgressFill = document.getElementById("csv-progress-fill");
+const csvProgressPercent = document.getElementById("csv-progress-percent");
+const csvProgressStatus = document.getElementById("csv-progress-status");
 const logoutButton = document.getElementById("coach-logout");
 const previewCard = document.getElementById("player-preview-card");
 const previewContent = document.getElementById("player-preview-content");
@@ -65,6 +69,9 @@ let pendingTeamLogoDataUrl = "";
 let activeCoachTab = "roster";
 let locationEditEnabled = false;
 let sportEditEnabled = false;
+let csvProgressIntervalId = null;
+const preferBackendOnLocalhost =
+  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
 
 async function apiRequest(path, options = {}) {
   const headers = { ...(options.headers || {}) };
@@ -179,11 +186,37 @@ function resetCoachStripeSetupGate() {
   evaluateCoachStripeSetupGate();
 }
 
-function showCsvProcessing() {
+function setCsvProgress(value, statusText = "") {
+  const safeValue = Math.max(0, Math.min(100, Math.round(Number(value || 0))));
+  if (csvProgressFill) csvProgressFill.style.width = `${safeValue}%`;
+  if (csvProgressPercent) csvProgressPercent.textContent = `${safeValue}%`;
+  if (csvProgressStatus && statusText) csvProgressStatus.textContent = statusText;
+}
+
+function stopCsvProgressSimulation() {
+  if (!csvProgressIntervalId) return;
+  window.clearInterval(csvProgressIntervalId);
+  csvProgressIntervalId = null;
+}
+
+function startCsvProgressSimulation({ start = 8, ceiling = 82, step = 3, statusText = "Processing..." } = {}) {
+  stopCsvProgressSimulation();
+  setCsvProgress(start, statusText);
+  csvProgressIntervalId = window.setInterval(() => {
+    const current = Number(String(csvProgressPercent?.textContent || "0").replace("%", "")) || 0;
+    if (current >= ceiling) return;
+    setCsvProgress(Math.min(ceiling, current + step), statusText);
+  }, 180);
+}
+
+function showCsvProcessing(message = "Please wait while we prepare and validate your roster data.") {
+  if (csvProcessingCopy) csvProcessingCopy.textContent = message;
+  setCsvProgress(0, "Starting...");
   if (csvProcessingBackdrop) csvProcessingBackdrop.hidden = false;
 }
 
 function hideCsvProcessing() {
+  stopCsvProgressSimulation();
   if (csvProcessingBackdrop) csvProcessingBackdrop.hidden = true;
 }
 
@@ -322,6 +355,12 @@ function renderTransactions() {
   if (!show) return;
   populateDonationPlayerFilter();
   const rows = filteredTransactions();
+  if (preferBackendOnLocalhost) {
+    console.log("[local-stripe-debug] coach transactions render", {
+      rawCount: Array.isArray(state.transactions) ? state.transactions.length : 0,
+      filteredCount: rows.length
+    });
+  }
   renderTransactionSummary(rows);
   transactionsBody.innerHTML = "";
   if (!rows.length) {
@@ -624,6 +663,14 @@ function renderRoster() {
 async function loadBackendDashboard() {
   if (!session.backendId) throw new Error("No backend coach session");
   const data = await apiRequest(`/api/coaches/${encodeURIComponent(session.backendId)}/dashboard`);
+  if (preferBackendOnLocalhost) {
+    console.log("[local-stripe-debug] coach dashboard payload", {
+      coachId: session.backendId,
+      teamId: data?.team?.id || "",
+      playerCount: Array.isArray(data?.players) ? data.players.length : 0,
+      transactionCount: Array.isArray(data?.transactions) ? data.transactions.length : 0
+    });
+  }
   state = {
     mode: "backend",
     coach: data.coach,
@@ -655,6 +702,9 @@ async function loadDashboard() {
     } catch {
       // fallback below
     }
+  }
+  if (preferBackendOnLocalhost) {
+    throw new Error("Backend coach session required on localhost.");
   }
   loadLocalDashboard();
 }
@@ -807,7 +857,8 @@ processCsvButton?.addEventListener("click", async () => {
     return;
   }
   try {
-    showCsvProcessing();
+    showCsvProcessing("Preparing your CSV preview. This can take a few seconds for larger rosters.");
+    startCsvProgressSimulation({ start: 12, ceiling: 78, step: 4, statusText: "Reading CSV..." });
     await new Promise((resolve) => setTimeout(resolve, 300));
     const rows = parseCsv(await file.text()).map((row) => ({
       firstName: String(row.firstName || "").trim(),
@@ -818,6 +869,7 @@ processCsvButton?.addEventListener("click", async () => {
     const errors = validateCsvPreviewRows(nonEmptyRows);
     csvPreviewRows = nonEmptyRows;
     renderCsvPreview();
+    setCsvProgress(100, errors.length ? "Preview ready with issues to fix." : "Preview ready.");
     hideCsvProcessing();
     if (errors.length) {
       const message = `CSV has ${errors.length} issue(s). Please edit preview rows before saving.`;
@@ -874,7 +926,8 @@ csvConfirmSaveButton?.addEventListener("click", async () => {
     return;
   }
   try {
-    showCsvProcessing();
+    showCsvProcessing("Saving roster rows and sending invites. Please keep this page open until the save completes.");
+    startCsvProgressSimulation({ start: 10, ceiling: 90, step: 2, statusText: "Saving roster..." });
     await new Promise((resolve) => setTimeout(resolve, 300));
     let count = 0;
     let createdCount = 0;
@@ -905,7 +958,11 @@ csvConfirmSaveButton?.addEventListener("click", async () => {
         });
       }
       count += 1;
+      const ratio = rows.length ? count / rows.length : 1;
+      const progressValue = 12 + Math.round(ratio * 84);
+      setCsvProgress(progressValue, `Saving row ${count} of ${rows.length}...`);
     }
+    setCsvProgress(100, "Roster saved.");
     if (state.mode === "backend") {
       await loadBackendDashboard();
       const message = `Roster saved. Processed ${count}. New: ${createdCount}. Invite emails sent: ${emailedCount}. Failed: ${emailFailedCount}.`;

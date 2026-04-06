@@ -51,51 +51,79 @@
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">Youth Sports Giving</p>
-        <h1 id="hero-title">Support Athlete Gear Goals</h1>
-        <p class="hero-copy">
-          Find a player or team and donate directly to the gear they need.
-        </p>
-        <p class="donor-direction">
-          Tip: player search is fastest. Team search helps you browse full rosters.
-        </p>
-
-        <form class="search-panel" action="#" method="get" novalidate>
-          <div class="search-field">
-            <label for="player-search">Search Athletes</label>
-            <input
-              id="player-search"
-              name="player"
-              type="search"
-              placeholder="Search by athlete name"
-              autocomplete="off"
-            />
-            <ul id="player-suggestions" class="suggestions" hidden></ul>
+        <div class="hero-grid">
+          <div class="hero-content">
+            <p class="eyebrow">Youth Sports Giving</p>
+            <h1 id="hero-title">Support Athlete Gear Goals</h1>
+            <p class="hero-copy">
+              Help families and teams fund real equipment, team fees, and season costs without the usual fundraising clutter.
+            </p>
+            <div class="hero-highlights">
+              <span class="hero-chip">Search athletes fast</span>
+              <span class="hero-chip">Donate to exact items</span>
+              <span class="hero-chip">Coach-managed team pages</span>
+            </div>
           </div>
 
-          <div class="search-field">
-            <label for="team-search">Search Teams</label>
-            <input
-              id="team-search"
-              name="team"
-              type="search"
-              placeholder="Search by team name"
-              autocomplete="off"
-            />
-            <ul id="team-suggestions" class="suggestions" hidden></ul>
-          </div>
-        </form>
+          <aside class="hero-search-card">
+            <p class="hero-card-kicker">Find A Player Or Team</p>
+            <p class="donor-direction">
+              Player search is usually fastest. Team search is best when you want to browse a full roster.
+            </p>
 
-        <section class="featured-player-card section-top-gap-sm" id="featured-player-card" hidden>
-          <p class="eyebrow">Featured Player</p>
-          <h2 id="featured-player-name">Player Name</h2>
-          <p class="subtle-copy" id="featured-player-team">Team • Sport</p>
-          <div class="progress-track section-top-gap-sm">
-            <div class="progress-fill" id="featured-player-progress-fill"></div>
-          </div>
-          <p class="subtle-copy section-top-gap-sm" id="featured-player-progress-copy">0% of goal reached</p>
-          <a class="btn btn-money section-top-gap-sm" id="featured-player-link" href="/index.html">View Profile</a>
-        </section>
+            <form class="search-panel" action="#" method="get" novalidate>
+              <div class="search-field">
+                <label for="player-search">Search Athletes</label>
+                <input
+                  id="player-search"
+                  name="player"
+                  type="search"
+                  placeholder="Search by athlete name"
+                  autocomplete="off"
+                />
+                <ul id="player-suggestions" class="suggestions" hidden></ul>
+              </div>
+
+              <div class="search-field">
+                <label for="team-search">Search Teams</label>
+                <input
+                  id="team-search"
+                  name="team"
+                  type="search"
+                  placeholder="Search by team name"
+                  autocomplete="off"
+                />
+                <ul id="team-suggestions" class="suggestions" hidden></ul>
+              </div>
+            </form>
+
+            <section class="featured-player-card section-top-gap-sm" id="featured-player-card" hidden>
+              <p class="eyebrow">Featured Player</p>
+              <h2 id="featured-player-name">Player Name</h2>
+              <p class="subtle-copy" id="featured-player-team">Team • Sport</p>
+              <div class="progress-track section-top-gap-sm">
+                <div class="progress-fill" id="featured-player-progress-fill"></div>
+              </div>
+              <p class="subtle-copy section-top-gap-sm" id="featured-player-progress-copy">0% of goal reached</p>
+              <a class="btn btn-money section-top-gap-sm" id="featured-player-link" href="/index.html">View Profile</a>
+            </section>
+          </aside>
+        </div>
+
+        <div class="hero-proof-grid section-top-gap">
+          <article class="hero-proof-card">
+            <p class="hero-proof-value">Item-Based</p>
+            <p class="hero-proof-copy">Donors can support a specific gear need instead of guessing where money goes.</p>
+          </article>
+          <article class="hero-proof-card">
+            <p class="hero-proof-value">Team Friendly</p>
+            <p class="hero-proof-copy">Coaches can manage roster fundraising in one place with player-level credit tracking.</p>
+          </article>
+          <article class="hero-proof-card">
+            <p class="hero-proof-value">Mobile Ready</p>
+            <p class="hero-proof-copy">Quick search, clean player pages, and faster donor flow on phones.</p>
+          </article>
+        </div>
       </section>
     </main>
 

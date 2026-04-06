@@ -229,7 +229,7 @@
               <h3 class="section-title section-top-gap">Bulk Upload Roster (CSV)</h3>
               <p class="subtle-copy">Required columns: First Name, Last Name, Email</p>
               <input type="file" id="csv-upload" accept=".csv" />
-              <button class="btn btn-ghost section-top-gap-sm" type="button" id="process-csv">Process CSV</button>
+              <button class="btn btn-primary section-top-gap-sm" type="button" id="process-csv">Process CSV</button>
               <p class="form-feedback" id="csv-feedback"></p>
 
               <section class="section-top-gap" id="csv-preview-section" hidden>
@@ -362,8 +362,16 @@
         <div class="modal-header">
           <h2 id="csv-processing-title">Roster Configuration In Process</h2>
         </div>
-        <p class="subtle-copy">Please wait while we prepare and validate your roster data.</p>
-        <div class="intro-spinner section-top-gap-sm" aria-hidden="true"></div>
+        <p class="subtle-copy" id="csv-processing-copy">Please wait while we prepare and validate your roster data.</p>
+        <div class="csv-progress-card section-top-gap-sm" aria-hidden="true">
+          <div class="csv-progress-bar">
+            <div class="csv-progress-fill" id="csv-progress-fill"></div>
+          </div>
+          <div class="csv-progress-meta">
+            <span id="csv-progress-percent">0%</span>
+            <span id="csv-progress-status">Starting...</span>
+          </div>
+        </div>
       </section>
     </div>
 
