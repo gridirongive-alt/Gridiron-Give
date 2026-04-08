@@ -11,6 +11,9 @@ const playerForgotPasswordButton = document.getElementById("player-forgot-passwo
 const forgotPasswordForm = document.getElementById("forgot-password-form");
 const startCoachSignupButton = document.getElementById("start-coach-signup");
 const startPlayerSignupButton = document.getElementById("start-player-signup");
+const guideStartCoachSignupButton = document.getElementById("guide-start-coach-signup");
+const guideStartPlayerSignupButton = document.getElementById("guide-start-player-signup");
+const focusHomeSearchButton = document.getElementById("focus-home-search");
 const coachModeButtons = [...document.querySelectorAll("[data-select-coach-mode]")];
 const coachRecipientModeInput = document.getElementById("coach-recipient-mode-input");
 const coachSetupModeLabel = document.getElementById("coach-setup-mode-label");
@@ -230,6 +233,14 @@ function applyCoachRecipientMode(mode) {
 
 startCoachSignupButton?.addEventListener("click", () => showModal("coach-payout-modal"));
 startPlayerSignupButton?.addEventListener("click", () => openCreateAccountWithTab("player-signup"));
+guideStartCoachSignupButton?.addEventListener("click", () => showModal("coach-payout-modal"));
+guideStartPlayerSignupButton?.addEventListener("click", () => openCreateAccountWithTab("player-signup"));
+focusHomeSearchButton?.addEventListener("click", () => {
+  hideModal();
+  const playerSearch = document.getElementById("player-search");
+  playerSearch?.focus();
+  playerSearch?.scrollIntoView({ behavior: "smooth", block: "center" });
+});
 changeCoachPayoutModeButton?.addEventListener("click", () => showModal("coach-payout-modal"));
 coachModeButtons.forEach((button) => {
   button.addEventListener("click", () => {

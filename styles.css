@@ -2150,29 +2150,120 @@ a.table-name-link {
 }
 
 #get-started-modal {
-  width: min(860px, 100%);
+  width: min(760px, 100%);
 }
 
 #get-started-modal .modal-header {
+  margin-bottom: 12px;
+}
+
+.get-started-intro {
+  max-width: 60ch;
+  margin-bottom: 16px;
+}
+
+.get-started-tabs {
   margin-bottom: 18px;
 }
 
-#get-started-modal > .subtle-copy {
-  max-width: 58ch;
-  font-size: 1rem;
-  line-height: 1.46;
+.get-started-panel {
+  margin-top: 6px;
 }
 
-#get-started-modal .modal-actions {
-  margin-top: 24px;
+.guide-panel-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
 }
 
-#get-started-modal .modal-actions .btn {
-  min-width: 300px;
-  min-height: 58px;
-  padding-inline: 24px;
+.guide-kicker {
+  margin: 0 0 8px;
+  color: #1f6feb;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.guide-panel-grid h3 {
+  margin: 0 0 14px;
+  font-size: 1.28rem;
+  line-height: 1.18;
+}
+
+.guide-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+  display: grid;
+  gap: 10px;
+  line-height: 1.55;
+}
+
+.guide-aside {
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 18px 20px;
+  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+  display: grid;
+  gap: 10px;
+}
+
+.guide-aside-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.guide-aside .btn {
+  margin-top: 4px;
+}
+
+.legal-copy {
+  display: grid;
+  gap: 14px;
+  color: var(--muted);
+  line-height: 1.66;
+}
+
+.legal-copy p {
+  margin: 0;
+}
+
+.inline-link-anchor {
+  color: #1f6feb;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+.faq-list {
+  display: grid;
+  gap: 14px;
+}
+
+.faq-item {
+  border: 1px solid var(--border);
   border-radius: 18px;
-  font-size: 0.98rem;
+  background: linear-gradient(180deg, #fbfdff, #f3f8ff);
+  padding: 16px 18px;
+}
+
+.faq-item h3 {
+  margin: 0 0 8px;
+  font-size: 1.02rem;
+  line-height: 1.24;
+}
+
+.faq-item p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+#get-started-modal {
+  max-width: min(760px, 100%);
 }
 
 .site-footer {
@@ -2205,7 +2296,7 @@ a.table-name-link {
 
 .footer-link:hover {
   opacity: 1;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 @keyframes page-fade {

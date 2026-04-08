@@ -40,7 +40,7 @@
         <span class="logo-text">Gridiron Give</span>
       </a>
       <nav class="header-actions" aria-label="Primary">
-        <button class="btn btn-ghost" type="button" data-open-modal="get-started-modal" data-auth-guest>
+        <button class="btn btn-ghost" type="button" data-open-modal="get-started-modal">
           Get Started
         </button>
         <button class="btn btn-primary" type="button" data-open-modal="sign-in-modal" data-auth-guest>
@@ -56,19 +56,14 @@
             <p class="eyebrow">Youth Sports Giving</p>
             <h1 id="hero-title">Support Athlete Gear Goals</h1>
             <p class="hero-copy">
-              Help families and teams fund real equipment, team fees, and season costs without the usual fundraising clutter.
+              Find a player. Pick a need. Give directly.
             </p>
-            <div class="hero-highlights">
-              <span class="hero-chip">Search athletes fast</span>
-              <span class="hero-chip">Donate to exact items</span>
-              <span class="hero-chip">Coach-managed team pages</span>
-            </div>
+            
           </div>
 
           <aside class="hero-search-card">
             <p class="hero-card-kicker">Find A Player Or Team</p>
-            <p class="donor-direction">
-              Player search is usually fastest. Team search is best when you want to browse a full roster.
+            
             </p>
 
             <form class="search-panel" action="#" method="get" novalidate>
@@ -113,15 +108,15 @@
         <div class="hero-proof-grid section-top-gap">
           <article class="hero-proof-card">
             <p class="hero-proof-value">Item-Based</p>
-            <p class="hero-proof-copy">Donors can support a specific gear need instead of guessing where money goes.</p>
+            <p class="hero-proof-copy">Direct support for real team needs.</p>
           </article>
           <article class="hero-proof-card">
-            <p class="hero-proof-value">Team Friendly</p>
-            <p class="hero-proof-copy">Coaches can manage roster fundraising in one place with player-level credit tracking.</p>
+            <p class="hero-proof-value">Roster Ready</p>
+            <p class="hero-proof-copy">Built for full teams and player pages.</p>
           </article>
           <article class="hero-proof-card">
-            <p class="hero-proof-value">Mobile Ready</p>
-            <p class="hero-proof-copy">Quick search, clean player pages, and faster donor flow on phones.</p>
+            <p class="hero-proof-value">Simple Giving</p>
+            <p class="hero-proof-copy">Search fast and donate with clarity.</p>
           </article>
         </div>
       </section>
@@ -130,31 +125,85 @@
     <div class="modal-backdrop" id="modal-backdrop" hidden>
       <section class="modal modal-wide modal-roomy" id="get-started-modal" role="dialog" aria-modal="true" aria-labelledby="get-started-title" hidden>
         <div class="modal-header">
-          <h2 id="get-started-title">Welcome to Gridiron Give</h2>
+          <h2 id="get-started-title">Get Started</h2>
           <button class="icon-btn" type="button" aria-label="Close modal" data-close-modal>&times;</button>
         </div>
-        <p class="subtle-copy">
-          Gridiron Give helps teams organize athlete equipment fundraising in one place.
-          Donors can find players and fund specific gear items, while team managers and players
-          keep profiles and goals up to date.
+        <p class="subtle-copy get-started-intro">
+          A quick walkthrough for donors, team managers, and players. Pick the view that matches how you plan to use the site.
         </p>
-        <div class="welcome-overview-grid">
-          <article class="welcome-overview-card">
-            <h3>Team Manager</h3>
-            <p>Set up your team, upload roster, and track player registration and fundraising progress.</p>
-          </article>
-          <article class="welcome-overview-card">
-            <h3>Player</h3>
-            <p>Use your PlayerID, configure your gear list and goals, then publish for donor support.</p>
-          </article>
+        <div class="tablist get-started-tabs" role="tablist" aria-label="Get started guide">
+          <button class="tab is-active" type="button" role="tab" data-tab-target="guide-donors">Donors</button>
+          <button class="tab" type="button" role="tab" data-tab-target="guide-managers">Managers</button>
+          <button class="tab" type="button" role="tab" data-tab-target="guide-players">Players</button>
         </div>
-        <div class="modal-actions section-top-gap-sm">
-          <button class="btn btn-primary" type="button" id="start-coach-signup">
-            Start Team Manager Setup
-          </button>
-          <button class="btn btn-money" type="button" id="start-player-signup">
-            Have A PlayerID? Start Player Setup
-          </button>
+
+        <div class="tab-panel is-active get-started-panel" id="guide-donors" role="tabpanel">
+          <div class="guide-panel-grid">
+            <div>
+              <p class="guide-kicker">For Donors</p>
+              <h3>Find a player or team and give with confidence.</h3>
+              <ul class="guide-list">
+                <li>Use the search fields on the home page to jump straight to a player or team page.</li>
+                <li>Player pages let you fund a specific item or make a general donation that fills needs automatically.</li>
+                <li>Team pages show roster progress and, when enabled by the coach, shared team fundraising options.</li>
+                <li>During checkout, you can choose whether to help cover processing fees so more of your gift reaches the athlete or team.</li>
+                <li>Donation receipts and confirmation messages are sent after checkout completes.</li>
+              </ul>
+            </div>
+            <div class="guide-aside">
+              <p class="guide-aside-title">Quick Tip</p>
+              <p class="subtle-copy">If you know the athlete name, start with player search. If you want to browse a full roster, search by team instead.</p>
+              <button class="btn btn-primary btn-block" type="button" id="focus-home-search">
+                Start Searching
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel get-started-panel" id="guide-managers" role="tabpanel" hidden>
+          <div class="guide-panel-grid">
+            <div>
+              <p class="guide-kicker">For Managers</p>
+              <h3>Set up once, then manage roster, pricing, and donation visibility in one place.</h3>
+              <ul class="guide-list">
+                <li>Create your team account, choose your sport, set your location, and pick your donation recipient flow at signup.</li>
+                <li>Your donation recipient choice is locked after signup, so choose carefully before creating the account.</li>
+                <li>Upload or maintain your roster, review registration status, and track donations credited to each player.</li>
+                <li>If your team receives donations centrally, connect Stripe on the coach dashboard and follow the onboarding instructions closely.</li>
+                <li>Shared team pricing controls what donors see on player and team pages when the coach-managed flow is enabled.</li>
+              </ul>
+            </div>
+            <div class="guide-aside">
+              <p class="guide-aside-title">Manager Shortcut</p>
+              <p class="subtle-copy">Coach-managed payouts are recommended for most youth teams, especially when athletes may be under 18.</p>
+              <button class="btn btn-primary btn-block" type="button" id="guide-start-coach-signup">
+                Sign Up A Team
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel get-started-panel" id="guide-players" role="tabpanel" hidden>
+          <div class="guide-panel-grid">
+            <div>
+              <p class="guide-kicker">For Players</p>
+              <h3>Claim your account, review your page, and keep your fundraiser current.</h3>
+              <ul class="guide-list">
+                <li>Use the Player ID sent by your coach to create your account and unlock your dashboard.</li>
+                <li>If your coach controls team pricing, your page reflects the coach’s shared item setup and payout flow.</li>
+                <li>If your team uses individual payouts, you may be asked to connect Stripe before receiving donations directly.</li>
+                <li>Keep your profile image, page visibility, and public information current so donors can trust what they see.</li>
+                <li>If anything looks off, use Contact Us and we will work to respond quickly.</li>
+              </ul>
+            </div>
+            <div class="guide-aside">
+              <p class="guide-aside-title">Player Shortcut</p>
+              <p class="subtle-copy">You will need your Player ID before creating a player account. If you do not have it, check with your coach first.</p>
+              <button class="btn btn-money btn-block" type="button" id="guide-start-player-signup">
+                Use Player ID
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -165,7 +214,7 @@
         </div>
         <p class="subtle-copy">
           Before creating your manager account, choose how your team wants donations to be paid out.
-          You can update this later, but it is easiest to choose the right setup from the start.
+          This choice is locked after signup, so review it carefully before moving forward.
         </p>
         <div class="choice-stack section-top-gap-sm">
           <article class="payout-choice-card is-recommended">
@@ -413,6 +462,9 @@
               Forgot Password
             </button>
             <button class="btn btn-primary btn-block" type="submit">Sign In as Coach</button>
+            <button class="btn btn-soft btn-block" type="button" data-open-modal="get-started-modal">
+              New user?
+            </button>
           </form>
           <p class="form-feedback" id="coach-signin-feedback" role="status" aria-live="polite"></p>
         </div>
@@ -431,6 +483,9 @@
               Forgot Password
             </button>
             <button class="btn btn-primary btn-block" type="submit">Sign In as Player</button>
+            <button class="btn btn-soft btn-block" type="button" data-open-modal="get-started-modal">
+              New user?
+            </button>
           </form>
           <p class="form-feedback" id="player-signin-feedback" role="status" aria-live="polite"></p>
         </div>
@@ -458,37 +513,91 @@
         <p class="form-feedback" id="forgot-password-feedback" role="status" aria-live="polite"></p>
       </section>
 
-      <section class="modal" id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+      <section class="modal modal-roomy modal-wide" id="about-modal" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
         <div class="modal-header">
           <h2 id="about-title">About Gridiron Give</h2>
           <button class="icon-btn" type="button" aria-label="Close modal" data-close-modal>&times;</button>
         </div>
-        <p class="subtle-copy">
-          Gridiron Give connects donors with athletes who are raising funds for sport-specific equipment.
-          Coaches manage rosters, players set up goal items, and donors can support exact needs in one place.
-        </p>
+        <div class="legal-copy">
+          <p>
+            Gridiron Give is a fundraising platform built to help youth sports teams organize equipment and team-cost support in a way that is easier for families, clearer for donors, and more manageable for coaches. Donors can search for a player or a full team, review real equipment or shared team needs, and contribute directly to the items or goals that matter most.
+          </p>
+          <p>
+            Over time, the platform has expanded beyond simple player pages. Team managers can now upload rosters, choose whether the coach or each player receives funds, connect Stripe when payouts are required, upload a team logo, manage shared pricing for coach-led teams, and review donation history in one place. Players can claim their accounts with a Player ID, maintain a public page, and stay aligned with the fundraising structure their team selected.
+          </p>
+          <p>
+            Gridiron Give is also designed to make the donor experience feel direct and trustworthy. Search suggestions surface team branding and location details, team pages show roster progress, and donation flows now reflect whether a player or coach is acting as the payout recipient. We continue to refine the platform with clarity, compliance, and ease of use in mind.
+          </p>
+          <p>
+            Gridiron Give is a product of
+            <a class="inline-link-anchor" href="https://spelillo.github.io/seanpelilloenterprises/" target="_blank" rel="noreferrer">SPE</a>.
+          </p>
+        </div>
       </section>
 
-      <section class="modal" id="terms-modal" role="dialog" aria-modal="true" aria-labelledby="terms-title" hidden>
+      <section class="modal modal-roomy modal-wide" id="terms-modal" role="dialog" aria-modal="true" aria-labelledby="terms-title" hidden>
         <div class="modal-header">
           <h2 id="terms-title">Terms of Service</h2>
           <button class="icon-btn" type="button" aria-label="Close modal" data-close-modal>&times;</button>
         </div>
-        <p class="subtle-copy">
-          By using Gridiron Give, users agree to provide accurate information, respect platform rules, and use funds
-          for intended equipment purposes. Donations are voluntary, and account misuse may result in access removal.
-        </p>
+        <div class="legal-copy">
+          <p>
+            By accessing or using Gridiron Give, you agree to use the platform only for lawful fundraising, donation, roster management, and account administration purposes. Users must provide accurate information when creating accounts, maintaining team or player profiles, processing donations, and communicating through the site. Coaches and team managers are responsible for the accuracy of roster data, team details, payout configuration choices, and any public-facing information published on behalf of their teams. Players are responsible for maintaining accurate profile information and following the fundraising structure selected by their team. Donors are responsible for reviewing recipient information before completing a contribution.
+          </p>
+          <p>
+            Donations made through Gridiron Give are voluntary and generally intended to support athlete equipment, team costs, facilities, officials fees, or other sports-related purposes represented on the platform. Gridiron Give does not guarantee tax deductibility, charitable status, athletic eligibility outcomes, roster placement, or any particular use of funds beyond the general fundraising purpose described by the team or player. Platform operators may suspend, limit, or remove accounts, fundraising pages, or content that appears misleading, abusive, fraudulent, unlawful, or materially inconsistent with the platform’s intended purpose.
+          </p>
+          <p>
+            Users understand that payment processing, onboarding, identity verification, and payout services may be handled in part by third-party providers such as Stripe. Additional terms from those providers may apply. Certain payout options may not be available to all users, including minors or users located in certain jurisdictions. Teams are responsible for choosing the payout flow that fits their circumstances, and coaches are specifically informed during signup that the selected donation recipient model cannot be changed casually after account creation without operational consequences.
+          </p>
+          <p>
+            Gridiron Give is provided on an as-available basis. While we work to keep the site reliable, we do not warrant uninterrupted access, perfect data accuracy, or error-free operation. To the maximum extent allowed by law, Gridiron Give and its operators are not liable for indirect, incidental, special, or consequential damages arising from use of the platform, donation disputes, payout delays, onboarding restrictions, or unauthorized account use. Users should contact us promptly if they believe an account, donation record, or public page contains an error or requires urgent review.
+          </p>
+        </div>
       </section>
 
-      <section class="modal" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title" hidden>
+      <section class="modal modal-roomy modal-wide" id="privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacy-title" hidden>
         <div class="modal-header">
           <h2 id="privacy-title">Privacy Policy</h2>
           <button class="icon-btn" type="button" aria-label="Close modal" data-close-modal>&times;</button>
         </div>
-        <p class="subtle-copy">
-          Gridiron Give stores account and donation information to operate the platform. Contact and profile data are
-          used for core functionality such as account setup, notifications, and donation records.
-        </p>
+        <div class="legal-copy">
+          <p>
+            Gridiron Give collects and stores information needed to operate the platform, including account details, team and player profile information, roster data, donation records, contact form submissions, and administrative activity related to account access and fundraising management. This may include names, email addresses, team names, team locations, player identifiers, profile images, donation metadata, and operational notes required to run the site safely and effectively. We use this information to create and maintain accounts, deliver emails, process or reconcile donations, display public fundraising pages, support administrative tools, and respond to user questions.
+          </p>
+          <p>
+            Certain payment and payout functions are handled through third-party providers, including Stripe. When users connect payout accounts or complete a donation, some information may be processed directly by those providers under their own privacy and compliance obligations. Gridiron Give does not store full payment card details. We may store limited transaction references, donation amounts, payout-related identifiers, and associated recipient metadata so that coaches, players, administrators, and support staff can understand what happened on the platform and correct issues when necessary.
+          </p>
+          <p>
+            Public pages may display selected information such as athlete names, team names, sport, location, fundraising progress, itemized needs, and approved logos or profile images. Coaches and players should avoid uploading information they do not want presented on public fundraising pages. We use reasonable measures to protect stored data, limit access to administrative tools, and preserve operational backups. However, no online service can promise absolute security, and users should use strong passwords, protect their devices, and notify us quickly if they suspect unauthorized access.
+          </p>
+          <p>
+            We may retain operational records, donation history, backup files, and communications for administrative, legal, security, or support reasons. If you need help correcting account information or have a privacy-related concern, use the Contact Us option and we will make a good-faith effort to respond quickly and address the request appropriately.
+          </p>
+        </div>
+      </section>
+
+      <section class="modal modal-roomy modal-wide" id="faq-modal" role="dialog" aria-modal="true" aria-labelledby="faq-title" hidden>
+        <div class="modal-header">
+          <h2 id="faq-title">Frequently Asked Questions</h2>
+          <button class="icon-btn" type="button" aria-label="Close modal" data-close-modal>&times;</button>
+        </div>
+        <div class="faq-list">
+          <article class="faq-item"><h3>How do I find a specific athlete?</h3><p>Use the athlete search on the home page. Suggestions include the athlete name, team, sport, and location so you can confirm you selected the right person.</p></article>
+          <article class="faq-item"><h3>Can I donate to a full team instead of one player?</h3><p>Yes. Search for the team and open the team page. Some teams also enable general donations or item-specific team support.</p></article>
+          <article class="faq-item"><h3>What is the difference between item donations and general donations?</h3><p>Item donations target one listed need. General donations are applied according to the fundraising flow set up for that player or team.</p></article>
+          <article class="faq-item"><h3>Why am I asked about covering fees?</h3><p>That option helps more of your intended contribution reach the athlete or team after processing and platform costs.</p></article>
+          <article class="faq-item"><h3>How do coaches sign up?</h3><p>Use Get Started, open the Managers tab, and choose team signup. Coaches select their payout structure during signup, and that choice should be made carefully because it is intended to stay fixed.</p></article>
+          <article class="faq-item"><h3>Can coaches change the donation recipient flow later?</h3><p>Not as a normal self-service setting. The payout structure chosen at signup is treated as a foundational setup choice, so coaches should review it carefully before creating the account.</p></article>
+          <article class="faq-item"><h3>Do players always connect Stripe?</h3><p>No. That depends on the team’s payout structure. Some teams route donations through the coach, while others require players to connect individually.</p></article>
+          <article class="faq-item"><h3>What if I am a player and do not have my Player ID?</h3><p>Reach out to your coach or team manager first. They control roster setup and the invitation flow.</p></article>
+          <article class="faq-item"><h3>Can a coach upload a team logo?</h3><p>Yes. Coaches can upload a team logo from the dashboard, and that branding can appear on team pages, player pages, and search suggestions.</p></article>
+          <article class="faq-item"><h3>How do roster uploads work?</h3><p>Coaches can upload roster data by CSV or add players manually. Large CSV imports may take a little time, and the dashboard now shows progress while processing.</p></article>
+          <article class="faq-item"><h3>What if a donation or page looks wrong?</h3><p>Use Contact Us and include the player, team, or donation details you are looking at. We want to respond quickly and fix real issues fast.</p></article>
+          <article class="faq-item"><h3>Can donors stay anonymous?</h3><p>Yes, if that option is offered in the donation flow. Operational donation records may still be retained for support and reconciliation.</p></article>
+          <article class="faq-item"><h3>What kinds of needs can teams list?</h3><p>Teams and players can raise support for equipment, uniforms, facilities costs, officials fees, and other approved sports-related needs shown on the platform.</p></article>
+          <article class="faq-item"><h3>How quickly will I hear back if I contact support?</h3><p>We aim to respond quickly and thoughtfully. Use the Contact Us button with enough detail for us to help without unnecessary back-and-forth.</p></article>
+        </div>
       </section>
 
       <section class="modal modal-roomy" id="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-title" hidden>
@@ -524,6 +633,7 @@
         <button class="footer-link" type="button" data-open-modal="terms-modal">Terms of Service</button>
         <button class="footer-link" type="button" data-open-modal="privacy-modal">Privacy Policy</button>
         <button class="footer-link" type="button" data-open-modal="contact-modal">Contact Us</button>
+        <button class="footer-link" type="button" data-open-modal="faq-modal">FAQs</button>
         <a class="footer-link" href="/admin-login">Employees</a>
       </div>
     </footer>
