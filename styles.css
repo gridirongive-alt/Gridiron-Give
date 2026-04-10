@@ -2074,6 +2074,22 @@ a.table-name-link {
   font-weight: 800;
 }
 
+.csv-template-card {
+  border: 1px solid #d9e7fa;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+  padding: 16px 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.csv-template-title {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
 .action-message-modal .intro-spinner {
   border-color: rgba(31, 111, 235, 0.25);
   border-top-color: #1f6feb;

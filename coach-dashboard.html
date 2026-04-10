@@ -227,7 +227,16 @@
               <p class="form-feedback" id="manual-feedback"></p>
 
               <h3 class="section-title section-top-gap">Bulk Upload Roster (CSV)</h3>
-              <p class="subtle-copy">Required columns: First Name, Last Name, Email</p>
+              <div class="csv-template-card section-top-gap-sm">
+                <p class="csv-template-title">Need a roster file first?</p>
+                <p class="subtle-copy">
+                  Download this 3-column template, open it in Google Sheets or Excel, and send it to players or families so they can fill in first name, last name, and email correctly. When it is complete, download it as a CSV and upload it here.
+                </p>
+                <a class="btn btn-soft btn-small" href="/assets/roster-template.csv" download="gridiron-give-roster-template.csv">
+                  Download Roster Template
+                </a>
+              </div>
+              <p class="subtle-copy section-top-gap-sm">Required columns: First Name, Last Name, Email</p>
               <input type="file" id="csv-upload" accept=".csv" />
               <button class="btn btn-primary section-top-gap-sm" type="button" id="process-csv">Process CSV</button>
               <p class="form-feedback" id="csv-feedback"></p>

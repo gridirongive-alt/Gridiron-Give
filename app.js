@@ -365,6 +365,16 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
     }
 
     matches = await enrichSearchMatches(matches);
+    const seen = new Set();
+    matches = matches.filter((item) => {
+      const key =
+        kind === "player"
+          ? String(item.playerPublicId || "").trim().toLowerCase()
+          : String(item.teamId || item.teamName || "").trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 
     matches = matches.slice(0, 5);
     if (!matches.length) {
