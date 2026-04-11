@@ -7,6 +7,8 @@ const teamLogoUpload = document.getElementById("team-logo-upload");
 const clearTeamLogoButton = document.getElementById("clear-team-logo");
 const teamLogoPreview = document.getElementById("team-logo-preview");
 const teamLogoImage = document.getElementById("team-logo-image");
+const teamThemeOptions = document.getElementById("team-theme-options");
+const teamThemeStatus = document.getElementById("team-theme-status");
 const teamLocationDisplay = document.getElementById("team-location-display");
 const teamSportDisplay = document.getElementById("team-sport-display");
 const teamLocationEditor = document.getElementById("team-location-editor");
@@ -66,12 +68,18 @@ let state = {
 };
 let csvPreviewRows = [];
 let pendingTeamLogoDataUrl = "";
+let pendingTeamThemeColor = "";
+let detectedThemeColors = [];
 let activeCoachTab = "roster";
 let locationEditEnabled = false;
 let sportEditEnabled = false;
 let csvProgressIntervalId = null;
+let themeDetectionRun = 0;
 const preferBackendOnLocalhost =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const defaultThemeColor = "#1F6FEB";
+const defaultThemeDark = "#1757B8";
+const defaultThemeAccent = "#3BA3FF";
 
 async function apiRequest(path, options = {}) {
   const headers = { ...(options.headers || {}) };
@@ -103,6 +111,65 @@ function showAction(message, isError = false) {
 
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
+}
+
+function normalizeHexColor(value) {
+  const raw = String(value || "").trim();
+  if (!/^#?[0-9a-f]{6}$/iu.test(raw)) return "";
+  return `#${raw.replace(/^#/u, "").toUpperCase()}`;
+}
+
+function hexToRgb(hex) {
+  const safe = normalizeHexColor(hex);
+  if (!safe) return null;
+  const value = safe.slice(1);
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = (channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+function scaleHex(hex, factor) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "";
+  return rgbToHex({ r: rgb.r * factor, g: rgb.g * factor, b: rgb.b * factor });
+}
+
+function mixHex(hex, targetHex, ratio) {
+  const base = hexToRgb(hex);
+  const target = hexToRgb(targetHex);
+  if (!base || !target) return "";
+  const t = Math.max(0, Math.min(1, Number(ratio || 0)));
+  return rgbToHex({
+    r: base.r + (target.r - base.r) * t,
+    g: base.g + (target.g - base.g) * t,
+    b: base.b + (target.b - base.b) * t
+  });
+}
+
+function applyTeamTheme(themeColor) {
+  const safe = normalizeHexColor(themeColor);
+  const body = document.body;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (!safe) {
+    body.removeAttribute("data-team-theme");
+    body.style.removeProperty("--brand");
+    body.style.removeProperty("--brand-dark");
+    body.style.removeProperty("--accent");
+    if (themeMeta) themeMeta.setAttribute("content", defaultThemeColor);
+    return;
+  }
+  body.dataset.teamTheme = safe;
+  body.style.setProperty("--brand", safe);
+  body.style.setProperty("--brand-dark", scaleHex(safe, 0.76) || defaultThemeDark);
+  body.style.setProperty("--accent", mixHex(safe, "#FFFFFF", 0.2) || defaultThemeAccent);
+  if (themeMeta) themeMeta.setAttribute("content", safe);
 }
 
 function prettySportLabel(value) {
@@ -156,6 +223,106 @@ function renderTeamDetailEditors() {
   editTeamLocationButton?.classList.toggle("is-active", locationEditEnabled);
   editTeamSportButton?.classList.toggle("is-active", sportEditEnabled);
   syncLocationEditorState();
+}
+
+async function extractDominantColorsFromLogo(dataUrl) {
+  const safe = String(dataUrl || "").trim();
+  if (!safe) return [];
+  const img = new Image();
+  img.decoding = "async";
+  img.src = safe;
+  await img.decode();
+  const canvas = document.createElement("canvas");
+  canvas.width = 28;
+  canvas.height = 28;
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return [];
+  context.clearRect(0, 0, 28, 28);
+  context.drawImage(img, 0, 0, 28, 28);
+  const pixels = context.getImageData(0, 0, 28, 28).data;
+  const buckets = new Map();
+  for (let index = 0; index < pixels.length; index += 4) {
+    const alpha = pixels[index + 3];
+    if (alpha < 140) continue;
+    const r = pixels[index];
+    const g = pixels[index + 1];
+    const b = pixels[index + 2];
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if (max > 245 && min > 245) continue;
+    if (max < 18 && min < 18) continue;
+    const quantize = (value) => Math.round(value / 32) * 32;
+    const hex = rgbToHex({ r: quantize(r), g: quantize(g), b: quantize(b) });
+    const entry = buckets.get(hex) || { count: 0, score: 0 };
+    entry.count += 1;
+    entry.score += (max - min) + max * 0.12;
+    buckets.set(hex, entry);
+  }
+  return [...buckets.entries()]
+    .sort((a, b) => (b[1].score + b[1].count * 2) - (a[1].score + a[1].count * 2))
+    .map(([hex]) => normalizeHexColor(hex))
+    .filter(Boolean)
+    .filter((hex, index, list) => list.indexOf(hex) === index)
+    .slice(0, 5);
+}
+
+function renderThemeChoices() {
+  if (!teamThemeOptions) return;
+  const selected = normalizeHexColor(pendingTeamThemeColor);
+  const colors = detectedThemeColors.filter((hex, index, list) => list.indexOf(hex) === index);
+  const options = [
+    { color: "", label: "Default Blue" },
+    ...colors.map((color) => ({ color, label: color }))
+  ];
+  teamThemeOptions.innerHTML = options
+    .map((option) => {
+      const normalized = normalizeHexColor(option.color);
+      const isActive = (normalized || "") === selected || (!normalized && !selected);
+      const swatchColor = normalized || defaultThemeColor;
+      return `
+        <button
+          class="theme-choice-chip ${!normalized ? "is-default" : ""} ${isActive ? "is-active" : ""}"
+          type="button"
+          data-theme-choice="${normalized || ""}"
+          aria-pressed="${isActive ? "true" : "false"}"
+        >
+          <span class="theme-choice-swatch" style="background:${swatchColor};"></span>
+          <span class="theme-choice-label">${option.label}</span>
+        </button>
+      `;
+    })
+    .join("");
+  if (teamThemeStatus) {
+    if (colors.length) {
+      teamThemeStatus.textContent = "Detected colors are ready. Pick one for your dashboards or keep the default blue.";
+    } else if (pendingTeamLogoDataUrl) {
+      teamThemeStatus.textContent = selected
+        ? `Custom theme selected: ${selected}.`
+        : "Logo loaded. Keep default blue or save without a custom theme.";
+    } else {
+      teamThemeStatus.textContent = selected
+        ? `Custom theme selected: ${selected}.`
+        : "Upload a logo to detect colors, or keep the default blue theme.";
+    }
+  }
+}
+
+async function refreshDetectedThemeColors() {
+  const runId = ++themeDetectionRun;
+  if (!pendingTeamLogoDataUrl) {
+    detectedThemeColors = [];
+    renderThemeChoices();
+    return;
+  }
+  try {
+    const colors = await extractDominantColorsFromLogo(pendingTeamLogoDataUrl);
+    if (runId !== themeDetectionRun) return;
+    detectedThemeColors = colors;
+  } catch {
+    if (runId !== themeDetectionRun) return;
+    detectedThemeColors = [];
+  }
+  renderThemeChoices();
 }
 
 function openCoachModal() {
@@ -241,7 +408,10 @@ function updateTeamForm() {
   sportEditEnabled = false;
   renderTeamDetailEditors();
   pendingTeamLogoDataUrl = String(state.team.logo_data_url || "");
+  pendingTeamThemeColor = normalizeHexColor(state.team.theme_color || state.team.themeColor || "");
   renderTeamLogoPreview();
+  applyTeamTheme(pendingTeamThemeColor);
+  refreshDetectedThemeColors();
   const recipientMode = String(state.team.recipient_mode || state.team.recipientMode || "coach");
   const recipientInputs = [...teamForm.querySelectorAll('input[name="recipientMode"]')];
   recipientInputs.forEach((input) => {
@@ -732,7 +902,8 @@ teamForm?.addEventListener("submit", async (event) => {
           name: teamForm.teamName.value,
           location: nextLocation,
           sport: nextSport,
-          imageDataUrl: pendingTeamLogoDataUrl
+          imageDataUrl: pendingTeamLogoDataUrl,
+          themeColor: pendingTeamThemeColor
         })
       });
       await loadBackendDashboard();
@@ -740,7 +911,9 @@ teamForm?.addEventListener("submit", async (event) => {
       api.updateTeam(state.team.id, {
         name: teamForm.teamName.value,
         location: nextLocation,
-        sport: nextSport
+        sport: nextSport,
+        imageDataUrl: pendingTeamLogoDataUrl,
+        themeColor: pendingTeamThemeColor
       });
       loadLocalDashboard();
     }
@@ -769,6 +942,7 @@ teamLogoUpload?.addEventListener("change", async (event) => {
     }
     pendingTeamLogoDataUrl = await readFileAsDataUrl(file);
     renderTeamLogoPreview();
+    await refreshDetectedThemeColors();
     setFeedback("team-feedback", "Team logo ready to save with your profile.");
   } catch (error) {
     target.value = "";
@@ -781,7 +955,24 @@ clearTeamLogoButton?.addEventListener("click", () => {
   pendingTeamLogoDataUrl = "";
   if (teamLogoUpload) teamLogoUpload.value = "";
   renderTeamLogoPreview();
+  refreshDetectedThemeColors();
   setFeedback("team-feedback", "Team logo removed. Save team profile to publish the change.");
+});
+
+teamThemeOptions?.addEventListener("click", (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement)) return;
+  const choice = target.closest("[data-theme-choice]");
+  if (!(choice instanceof HTMLButtonElement)) return;
+  pendingTeamThemeColor = normalizeHexColor(choice.dataset.themeChoice || "");
+  applyTeamTheme(pendingTeamThemeColor);
+  renderThemeChoices();
+  setFeedback(
+    "team-feedback",
+    pendingTeamThemeColor
+      ? `Theme color selected: ${pendingTeamThemeColor}. Save team profile to keep it.`
+      : "Default blue theme selected. Save team profile to keep the default style."
+  );
 });
 
 coachTabButtons.forEach((button) => {

@@ -247,6 +247,8 @@ function createCoachAccount({ name, email, password, teamName, teamLocation, tea
     name: String(teamName || "").trim(),
     location: String(teamLocation || "").trim(),
     sport: String(teamSport || "football").trim().toLowerCase() || "football",
+    logoDataUrl: "",
+    themeColor: "",
   });
   writeData(data);
   return coachId;
@@ -325,6 +327,9 @@ function updateTeam(teamId, updates) {
   team.sport = String(updates.sport || team.sport || "football").toLowerCase();
   if (typeof updates.imageDataUrl === "string") {
     team.logoDataUrl = String(updates.imageDataUrl || "").trim();
+  }
+  if (typeof updates.themeColor === "string") {
+    team.themeColor = String(updates.themeColor || "").trim();
   }
   const roster = data.players.filter((item) => item.teamId === team.id);
   roster.forEach((player) => {

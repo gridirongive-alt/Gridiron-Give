@@ -34,11 +34,73 @@ let selectedMode = "team-general";
 let selectedEquipmentName = "";
 const preferBackendOnLocalhost =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+const defaultThemeColor = "#1F6FEB";
+const defaultThemeDark = "#1757B8";
+const defaultThemeAccent = "#3BA3FF";
 
 function showAction(message, isError = false) {
   if (typeof window.showActionMessage === "function") {
     window.showActionMessage(message, { isError });
   }
+}
+
+function normalizeHexColor(value) {
+  const raw = String(value || "").trim();
+  if (!/^#?[0-9a-f]{6}$/iu.test(raw)) return "";
+  return `#${raw.replace(/^#/u, "").toUpperCase()}`;
+}
+
+function hexToRgb(hex) {
+  const safe = normalizeHexColor(hex);
+  if (!safe) return null;
+  const value = safe.slice(1);
+  return {
+    r: Number.parseInt(value.slice(0, 2), 16),
+    g: Number.parseInt(value.slice(2, 4), 16),
+    b: Number.parseInt(value.slice(4, 6), 16)
+  };
+}
+
+function rgbToHex({ r, g, b }) {
+  const toHex = (channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`.toUpperCase();
+}
+
+function scaleHex(hex, factor) {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return "";
+  return rgbToHex({ r: rgb.r * factor, g: rgb.g * factor, b: rgb.b * factor });
+}
+
+function mixHex(hex, targetHex, ratio) {
+  const base = hexToRgb(hex);
+  const target = hexToRgb(targetHex);
+  if (!base || !target) return "";
+  const t = Math.max(0, Math.min(1, Number(ratio || 0)));
+  return rgbToHex({
+    r: base.r + (target.r - base.r) * t,
+    g: base.g + (target.g - base.g) * t,
+    b: base.b + (target.b - base.b) * t
+  });
+}
+
+function applyTeamTheme(themeColor) {
+  const safe = normalizeHexColor(themeColor);
+  const body = document.body;
+  const themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (!safe) {
+    body.removeAttribute("data-team-theme");
+    body.style.removeProperty("--brand");
+    body.style.removeProperty("--brand-dark");
+    body.style.removeProperty("--accent");
+    if (themeMeta) themeMeta.setAttribute("content", defaultThemeColor);
+    return;
+  }
+  body.dataset.teamTheme = safe;
+  body.style.setProperty("--brand", safe);
+  body.style.setProperty("--brand-dark", scaleHex(safe, 0.76) || defaultThemeDark);
+  body.style.setProperty("--accent", mixHex(safe, "#FFFFFF", 0.2) || defaultThemeAccent);
+  if (themeMeta) themeMeta.setAttribute("content", safe);
 }
 
 async function apiRequest(path, options = {}) {
@@ -119,6 +181,7 @@ async function loadTeam() {
     state.teamEquipment = data.teamEquipment || [];
     state.totalTeamGoal = Number(data.totalTeamGoal || 0);
     state.totalTeamRaised = Number(data.totalTeamRaised || 0);
+    applyTeamTheme(state.team?.theme_color || state.team?.themeColor || "");
     return;
   } catch (error) {
     if (preferBackendOnLocalhost) throw error;
@@ -131,6 +194,7 @@ async function loadTeam() {
   state.teamEquipment = [];
   state.totalTeamGoal = state.players.reduce((sum, player) => sum + Number(player.goalTotal || 0), 0);
   state.totalTeamRaised = state.players.reduce((sum, player) => sum + Number(player.raisedTotal || 0), 0);
+  applyTeamTheme(state.team?.themeColor || state.team?.theme_color || "");
 }
 
 function renderTop() {

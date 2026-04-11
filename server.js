@@ -2144,13 +2144,14 @@ app.get("/api/coaches/:coachId/dashboard", (req, res) => {
 
 app.patch("/api/teams/:teamId", (req, res) => {
   const { teamId } = req.params;
-  const { name, imageDataUrl, location, sport } = req.body || {};
+  const { name, imageDataUrl, location, sport, themeColor } = req.body || {};
   const team = db.prepare("SELECT * FROM teams WHERE id = ?").get(teamId);
   if (!team) return res.status(404).json({ error: "Team not found." });
   let nextName;
   let nextLogoDataUrl;
   let nextLocation;
   let nextSport;
+  let nextThemeColor;
   const nextRecipientMode = String(team.recipient_mode || "coach").trim().toLowerCase() === "player" ? "player" : "coach";
   try {
     nextName = assertSafeName(name || team.name, "Team Name");
@@ -2173,16 +2174,24 @@ app.patch("/api/teams/:teamId", (req, res) => {
     if (nextLogoDataUrl.length > 7_500_000) {
       throw new Error("Team logo is too large. Use an image under 5 MB.");
     }
+    nextThemeColor =
+      typeof themeColor === "string"
+        ? (String(themeColor).trim() ? String(themeColor).trim().toUpperCase() : "")
+        : String(team.theme_color || "");
+    if (nextThemeColor && !/^#[0-9A-F]{6}$/u.test(nextThemeColor)) {
+      throw new Error("Theme color must be a valid hex color like #1F6FEB.");
+    }
   } catch (error) {
     return res.status(400).json({ error: error.message || "Invalid team profile data." });
   }
   const sportChanged = String(nextSport || "") !== String(team.sport || "");
-  db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=?, logo_data_url=? WHERE id=?").run(
+  db.prepare("UPDATE teams SET name=?, location=?, sport=?, recipient_mode=?, logo_data_url=?, theme_color=? WHERE id=?").run(
     nextName,
     nextLocation,
     nextSport,
     nextRecipientMode,
     nextLogoDataUrl,
+    nextThemeColor,
     teamId
   );
   db.prepare("UPDATE coaches SET team_name=? WHERE id=?").run(nextName, team.coach_id);
@@ -2542,6 +2551,7 @@ app.get("/api/players/:playerId/dashboard", (req, res) => {
       ...player,
       teamName: team?.name || "",
       teamSport: team?.sport || "",
+      teamThemeColor: team?.theme_color || "",
       teamRecipientMode: team?.recipient_mode || "coach",
       coachName: coach?.name || "",
       coachStripeAccountId: String(coach?.stripe_account_id || ""),
@@ -2697,6 +2707,7 @@ app.get("/api/public/players/:publicId", (req, res) => {
         p.*,
        t.name AS team_name,
         t.sport AS team_sport,
+        t.theme_color AS team_theme_color,
         t.logo_data_url AS team_logo_data_url,
         t.recipient_mode,
         c.id AS coach_id,
@@ -2715,6 +2726,7 @@ app.get("/api/public/players/:publicId", (req, res) => {
     player: {
       ...player,
       team_logo_data_url: player.team_logo_data_url || "",
+      team_theme_color: player.team_theme_color || "",
       recipient_mode: player.recipient_mode || "coach",
       coach_name: player.coach_name || "",
       stripe_account_id:
