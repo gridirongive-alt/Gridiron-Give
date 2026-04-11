@@ -2849,7 +2849,7 @@ app.get("/api/admin/backups/latest-excel", (_req, res) => {
     runDatabaseBackup("admin-download");
   }
   res.setHeader("Content-Type", "application/vnd.ms-excel");
-  return res.download(latestExcelBackupPath, "gridiron-give-backup-latest.xml");
+  return res.download(latestExcelBackupPath, "gridiron-give-backup-latest.xls");
 });
 
 app.post("/api/admin/sql", (req, res) => {

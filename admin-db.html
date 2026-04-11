@@ -114,7 +114,12 @@
       <section class="card section-top-gap">
         <h2 class="section-title">Results</h2>
         <div class="equipment-actions section-top-gap-sm">
-          <button class="btn btn-danger-ghost" id="bulk-delete" type="button" disabled>Delete Selected</button>
+          <div class="equipment-actions">
+            <button class="btn btn-soft" id="export-results-csv" type="button" disabled>Export Results CSV</button>
+            <button class="btn btn-soft" id="export-results-excel" type="button" disabled>Export Results Excel</button>
+            <a class="btn btn-ghost" id="download-latest-backup-excel" href="/api/admin/backups/latest-excel">Download Full DB Workbook</a>
+            <button class="btn btn-danger-ghost" id="bulk-delete" type="button" disabled>Delete Selected</button>
+          </div>
           <span id="selection-count" class="subtle-copy">0 selected</span>
         </div>
         <div class="table-wrap section-top-gap-sm">
@@ -163,6 +168,8 @@
       const tableHead = document.getElementById("table-head");
       const tableBody = document.getElementById("table-body");
       const bulkDeleteButton = document.getElementById("bulk-delete");
+      const exportResultsCsvButton = document.getElementById("export-results-csv");
+      const exportResultsExcelButton = document.getElementById("export-results-excel");
       const selectionCount = document.getElementById("selection-count");
       const filterTable = document.getElementById("filter-table");
       const filterColumn = document.getElementById("filter-column");
@@ -217,6 +224,12 @@
         bulkDeleteButton.disabled = readOnly || selectedRowIds.size === 0;
       }
 
+      function updateExportButtons() {
+        const hasRows = Array.isArray(lastQueryRows) && lastQueryRows.length > 0;
+        if (exportResultsCsvButton) exportResultsCsvButton.disabled = !hasRows;
+        if (exportResultsExcelButton) exportResultsExcelButton.disabled = !hasRows;
+      }
+
       function setStatus(message, isError = false) {
         sqlStatus.textContent = message;
         sqlStatus.style.color = isError ? "#b91c1c" : "";
@@ -249,6 +262,7 @@
           tableBody.innerHTML = '<tr><td class="subtle-copy">No rows returned.</td></tr>';
           selectedRowIds.clear();
           updateSelectionUI();
+          updateExportButtons();
           return;
         }
         const columns = Object.keys(rows[0]);
@@ -285,11 +299,113 @@
           })
           .join("");
         updateSelectionUI();
+        updateExportButtons();
       }
 
       function updateSelectionUI() {
         selectionCount.textContent = `${selectedRowIds.size} selected`;
         bulkDeleteButton.disabled = !canWrite() || selectedRowIds.size === 0;
+      }
+
+      function csvEscape(value) {
+        const text = String(value ?? "");
+        if (/[",\n]/.test(text)) {
+          return `"${text.replace(/"/g, '""')}"`;
+        }
+        return text;
+      }
+
+      function buildCsv(columns, rows) {
+        const header = columns.map(csvEscape).join(",");
+        const body = rows
+          .map((row) => columns.map((column) => csvEscape(row?.[column])).join(","))
+          .join("\n");
+        return `${header}\n${body}`;
+      }
+
+      function xmlEscape(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&apos;");
+      }
+
+      function workbookCell(value) {
+        if (value === null || value === undefined || value === "") {
+          return '<Cell><Data ss:Type="String"></Data></Cell>';
+        }
+        const numeric = Number(value);
+        if (typeof value === "number" || (!Number.isNaN(numeric) && String(value).trim() !== "" && String(value).trim() === String(numeric))) {
+          return `<Cell><Data ss:Type="Number">${numeric}</Data></Cell>`;
+        }
+        return `<Cell><Data ss:Type="String">${xmlEscape(value)}</Data></Cell>`;
+      }
+
+      function buildExcelWorkbook(columns, rows) {
+        const headerRow = columns.map((column) => workbookCell(column)).join("");
+        const bodyRows = rows
+          .map((row) => {
+            const cells = columns.map((column) => workbookCell(row?.[column])).join("");
+            return `<Row>${cells}</Row>`;
+          })
+          .join("");
+        return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook
+  xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="Query Results">
+    <Table>
+      <Row>${headerRow}</Row>
+      ${bodyRows}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+      }
+
+      function downloadBlob(filename, content, type) {
+        const blob = new Blob([content], { type });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      }
+
+      function timestampStamp() {
+        return new Date().toISOString().replace(/[:.]/g, "-");
+      }
+
+      function exportCurrentResultsCsv() {
+        if (!lastQueryRows.length || !lastQueryColumns.length) {
+          setStatus("Run a query or load a table before exporting.", true);
+          return;
+        }
+        const csv = buildCsv(lastQueryColumns, lastQueryRows);
+        downloadBlob(`gridiron-give-query-results-${timestampStamp()}.csv`, csv, "text/csv;charset=utf-8");
+        setStatus("CSV export downloaded.");
+      }
+
+      function exportCurrentResultsExcel() {
+        if (!lastQueryRows.length || !lastQueryColumns.length) {
+          setStatus("Run a query or load a table before exporting.", true);
+          return;
+        }
+        const workbook = buildExcelWorkbook(lastQueryColumns, lastQueryRows);
+        downloadBlob(
+          `gridiron-give-query-results-${timestampStamp()}.xls`,
+          workbook,
+          "application/vnd.ms-excel"
+        );
+        setStatus("Excel export downloaded.");
       }
 
       function startInlineEdit(row) {
@@ -509,6 +625,8 @@
       }
 
       document.getElementById("run-sql").addEventListener("click", () => runSql(sqlInput.value));
+      exportResultsCsvButton.addEventListener("click", exportCurrentResultsCsv);
+      exportResultsExcelButton.addEventListener("click", exportCurrentResultsExcel);
       sqlStatementType.addEventListener("change", () => {
         applySqlTemplate(sqlStatementType.value, true);
       });
@@ -570,6 +688,7 @@
       });
 
       applySqlTemplate("SELECT", true);
+      updateExportButtons();
 
       tableBody.addEventListener("input", (event) => {
         const target = event.target;
