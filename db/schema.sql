@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS teams (
   sport TEXT NOT NULL DEFAULT 'football',
   recipient_mode TEXT NOT NULL DEFAULT 'coach',
   logo_data_url TEXT NOT NULL DEFAULT '',
+  theme_color TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (coach_id) REFERENCES coaches(id) ON DELETE CASCADE
 );

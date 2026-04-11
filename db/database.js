@@ -170,6 +170,9 @@ function ensureColumns() {
   if (!hasColumn("teams", "logo_data_url")) {
     db.prepare('ALTER TABLE teams ADD COLUMN "logo_data_url" TEXT NOT NULL DEFAULT ""').run();
   }
+  if (!hasColumn("teams", "theme_color")) {
+    db.prepare('ALTER TABLE teams ADD COLUMN "theme_color" TEXT NOT NULL DEFAULT ""').run();
+  }
   if (!hasColumn("players", "team_name")) {
     db.prepare('ALTER TABLE players ADD COLUMN "team_name" TEXT NOT NULL DEFAULT ""').run();
   }
