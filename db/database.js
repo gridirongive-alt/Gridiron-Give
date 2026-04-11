@@ -11,7 +11,7 @@ const dataDir = process.env.DATA_DIR
 const dbPath = path.join(dataDir, "gridiron-give.sqlite");
 const backupDir = path.join(dataDir, "backups");
 const latestJsonBackupPath = path.join(backupDir, "gridiron-give-backup-latest.json");
-const latestExcelBackupPath = path.join(backupDir, "gridiron-give-backup-latest.xml");
+const latestExcelBackupPath = path.join(backupDir, "gridiron-give-backup-latest.xls");
 const schemaPath = path.join(rootDir, "db", "schema.sql");
 
 function randomPart(length) {
