@@ -50,6 +50,8 @@
     </header>
 
     <main>
+      
+
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-grid">
           <div class="hero-content">
@@ -58,25 +60,6 @@
             <p class="hero-copy">
               Find a player. Pick a need. Give directly.
             </p>
-            <div class="hero-highlights" aria-label="Quick highlights">
-              <span class="hero-chip">Fast Search</span>
-              <span class="hero-chip">Direct Giving</span>
-              <span class="hero-chip">Team Pages</span>
-            </div>
-
-            <div style="margin-top: 2rem; padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); max-width: 420px;">
-              <p style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: 'Nunito', sans-serif;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4169E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                Operated Locally. Secured Globally.
-              </p>
-              <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; font-family: 'Nunito', sans-serif;">
-                We believe in direct support—<strong>95%</strong> of your contribution goes straight to the athlete's or team's verified account via secure Stripe processing. Stripe charges a 2.9% + 30¢ processing fee on all donations, with the remainder of up to 5% retained by Gridiron Give to support web hosting, servers, and platform operations.
-              </p>
-              <div style="display: flex; gap: 16px; align-items: center;">
-                <button class="inline-link" style="font-size: 0.85rem; font-weight: 700; color: #4169E1; background: none; border: none; cursor: pointer; padding: 0;" type="button" data-open-modal="about-modal">How it works</button>
-                <a class="inline-link" style="font-size: 0.85rem; font-weight: 700; color: #4169E1; text-decoration: none;" href="gg-disclosure.html" target="_blank">Transparency Policy &rarr;</a>
-              </div>
-            </div>
             </div>
 
           <aside class="hero-search-card">
@@ -119,22 +102,23 @@
               <a class="btn btn-money section-top-gap-sm" id="featured-player-link" href="/index.html">View Profile</a>
             </section>
           </aside>
+
+          <div style="margin-top: 2rem; padding: 1.25rem; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; max-width: none;">
+            <p style="font-size: 0.95rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-family: 'Nunito', sans-serif;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4169E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              Operated Locally. Secured Globally.
+            </p>
+            <p style="font-size: 0.85rem; color: #475569; margin-bottom: 12px; line-height: 1.5; font-family: 'Nunito', sans-serif;">
+              We believe in direct support—<strong>95%</strong> of your contribution goes straight to the athlete's or team's verified account via secure Stripe processing. Stripe charges a 2.9% + 30¢ processing fee on all donations, with the remainder of up to 5% retained by Gridiron Give to support web hosting, servers, and platform operations.
+            </p>
+            <div style="display: flex; gap: 16px; align-items: center;">
+              <button class="inline-link" style="font-size: 0.85rem; font-weight: 700; color: #4169E1; background: none; border: none; cursor: pointer; padding: 0;" type="button" data-open-modal="about-modal">How it works</button>
+              <a class="inline-link" style="font-size: 0.85rem; font-weight: 700; color: #4169E1; text-decoration: none;" href="gg-disclosure.html" target="_blank">Transparency Policy &rarr;</a>
+            </div>
+          </div>
         </div>
 
-        <div class="hero-proof-grid section-top-gap">
-          <article class="hero-proof-card">
-            <p class="hero-proof-value">Item-Based</p>
-            <p class="hero-proof-copy">Direct support for real team needs.</p>
-          </article>
-          <article class="hero-proof-card">
-            <p class="hero-proof-value">Roster Ready</p>
-            <p class="hero-proof-copy">Built for full teams and player pages.</p>
-          </article>
-          <article class="hero-proof-card">
-            <p class="hero-proof-value">Simple Giving</p>
-            <p class="hero-proof-copy">Search fast and donate with clarity.</p>
-          </article>
-        </div>
+        
       </section>
     </main>
 
@@ -147,17 +131,18 @@
         <p class="subtle-copy get-started-intro">
           Welcome in. Choose the path that fits you best.
         </p>
-        <div class="tablist get-started-tabs" role="tablist" aria-label="Get started guide">
+        <div class="tablist get-started-tabs" role="tablist" aria-label="Get started guide" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0;">
           <button class="tab is-active" type="button" role="tab" data-tab-target="guide-donors">Donors</button>
           <button class="tab" type="button" role="tab" data-tab-target="guide-managers">Managers</button>
           <button class="tab" type="button" role="tab" data-tab-target="guide-players">Players</button>
+          <span style="pointer-events: none; background: none; border: none;"></span>
         </div>
 
         <div class="tab-panel is-active get-started-panel" id="guide-donors" role="tabpanel">
           <div class="guide-panel-grid">
             <div>
               <p class="guide-kicker">For Donors</p>
-              <h3>Find the right page and give with confidence.</h3>
+              <h3>Find the right page and give with confidence. No sign in required.</h3>
               <ul class="guide-list">
                 <li>Search by athlete or team.</li>
                 <li>Donate to an item or a general goal.</li>
@@ -645,7 +630,7 @@
         <button class="footer-link" type="button" data-open-modal="contact-modal">Contact Us</button>
         <button class="footer-link" type="button" data-open-modal="faq-modal">FAQs</button>
         <a class="footer-link" href="gg-disclosure.html" target="_blank" rel="noreferrer">Donation Flow & Policy</a>
-        <a class="footer-link" href="/admin-login">Employees</a>
+        <a class="footer-link" href="/admin-login.html">Employees</a>
       </div>
     </footer>
 
