@@ -2452,24 +2452,31 @@ a.table-name-link {
 
   .site-header-home {
     width: min(96vw, 100%);
+    padding-top: 12px;
+    padding-bottom: 14px;
   }
 
   .site-header-inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     justify-items: center;
+    align-items: center;
+    row-gap: 14px;
   }
 
-  .site-header-inner .logo,
-  .site-header-inner .header-actions {
+  .site-header-inner .logo {
     justify-self: center;
   }
 
   .nav-pill-container {
     order: 3;
+    justify-self: center;
+    width: min(100%, 340px);
+    justify-content: center;
   }
 
   .nav-pill {
-    min-width: 96px;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .home-main {
@@ -2580,6 +2587,30 @@ a.table-name-link {
 
   .trust-note-card {
     max-width: none;
+  }
+
+  .home-page .header-actions {
+    width: 100%;
+    justify-self: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+
+  .home-page .header-actions .btn {
+    width: auto;
+    min-width: 110px;
+    padding-inline: 12px;
+  }
+
+  .home-page .user-menu {
+    width: auto;
+  }
+
+  .home-page .user-menu-trigger {
+    width: auto;
+    min-width: 168px;
+    max-width: 100%;
   }
 }
 
@@ -3085,6 +3116,37 @@ a.table-name-link {
   .home-page .header-actions .btn {
     min-height: 42px;
     padding: 9px 12px;
+  }
+
+  .home-page .site-header-inner {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    row-gap: 10px;
+  }
+
+  .home-page .site-header-inner .logo,
+  .home-page .site-header-inner .header-actions {
+    justify-self: center;
+  }
+
+  .home-page .header-actions {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .home-page .user-menu {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .home-page .user-menu-trigger {
+    width: auto;
+    min-width: 136px;
+  }
+
+  .home-page .nav-pill-container {
+    width: min(280px, 100%);
   }
 
   .suggestion-item {
