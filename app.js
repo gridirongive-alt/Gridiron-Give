@@ -29,8 +29,23 @@ const featuredTeam = document.getElementById("featured-player-team");
 const featuredProgressFill = document.getElementById("featured-player-progress-fill");
 const featuredProgressCopy = document.getElementById("featured-player-progress-copy");
 const featuredLink = document.getElementById("featured-player-link");
+const welcomeTabBtn = document.getElementById("welcome-tab-btn");
+const donateTabBtn = document.getElementById("donate-tab-btn");
+const welcomeSection = document.getElementById("welcome-section");
+const donateSection = document.getElementById("donate-section");
+const slides = [
+  document.getElementById("slide-1"),
+  document.getElementById("slide-2"),
+  document.getElementById("slide-3"),
+  document.getElementById("slide-4"),
+].filter(Boolean);
+const slideDots = [...document.querySelectorAll(".landing-dot")];
+const prevSlideButton = document.getElementById("prev-slide");
+const nextSlideButton = document.getElementById("next-slide");
+const skipToDonateButton = document.getElementById("skip-to-donate");
 const preferBackendOnLocalhost =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+let currentSlide = 0;
 
 async function apiRequest(path, options = {}) {
   let response;
@@ -80,6 +95,36 @@ function hideModal() {
   modals.forEach((modal) => {
     modal.hidden = true;
   });
+}
+
+function showDonateSection() {
+  if (welcomeSection) welcomeSection.hidden = true;
+  if (donateSection) donateSection.hidden = false;
+  welcomeTabBtn?.classList.remove("is-active");
+  donateTabBtn?.classList.add("is-active");
+}
+
+function showWelcomeSection() {
+  if (welcomeSection) welcomeSection.hidden = false;
+  if (donateSection) donateSection.hidden = true;
+  welcomeTabBtn?.classList.add("is-active");
+  donateTabBtn?.classList.remove("is-active");
+}
+
+function updateSlides() {
+  if (!slides.length) return;
+  slides.forEach((slide, index) => {
+    const active = index === currentSlide;
+    slide.hidden = !active;
+    slide.classList.toggle("is-active", active);
+  });
+  slideDots.forEach((dot, index) => {
+    dot.classList.toggle("is-active", index === currentSlide);
+  });
+  if (prevSlideButton) prevSlideButton.disabled = currentSlide === 0;
+  if (nextSlideButton) {
+    nextSlideButton.textContent = currentSlide === slides.length - 1 ? "Start" : "Next";
+  }
 }
 
 openButtons.forEach((button) => {
@@ -237,6 +282,7 @@ guideStartCoachSignupButton?.addEventListener("click", () => showModal("coach-pa
 guideStartPlayerSignupButton?.addEventListener("click", () => openCreateAccountWithTab("player-signup"));
 focusHomeSearchButton?.addEventListener("click", () => {
   hideModal();
+  showDonateSection();
   const playerSearch = document.getElementById("player-search");
   playerSearch?.focus();
   playerSearch?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -251,6 +297,24 @@ coachModeButtons.forEach((button) => {
 applyCoachRecipientMode("coach");
 syncCoachLocationInputs();
 coachTeamOutsideUs?.addEventListener("change", syncCoachLocationInputs);
+welcomeTabBtn?.addEventListener("click", showWelcomeSection);
+donateTabBtn?.addEventListener("click", showDonateSection);
+prevSlideButton?.addEventListener("click", () => {
+  if (currentSlide <= 0) return;
+  currentSlide -= 1;
+  updateSlides();
+});
+nextSlideButton?.addEventListener("click", () => {
+  if (currentSlide >= slides.length - 1) {
+    showDonateSection();
+    return;
+  }
+  currentSlide += 1;
+  updateSlides();
+});
+skipToDonateButton?.addEventListener("click", showDonateSection);
+updateSlides();
+showWelcomeSection();
 
 function buildSuggestionItem({ title, meta = "", logoDataUrl = "", fallback = "" }, onClick) {
   const li = document.createElement("li");
