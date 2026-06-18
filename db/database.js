@@ -312,9 +312,13 @@ class PostgresSyncDatabase {
     this.worker.postMessage({ requestPath, responsePath, signalPath });
 
     const started = Date.now();
+    const timeoutMs = Number(process.env.POSTGRES_PARENT_TIMEOUT_MS || 35000);
     while (!fs.existsSync(signalPath)) {
-      if (Date.now() - started > 30000) {
-        throw new Error("Postgres query timed out after 30 seconds.");
+      if (Date.now() - started > timeoutMs) {
+        const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
+        throw new Error(
+          `Postgres query timed out after ${timeoutMs}ms. Check that DATABASE_URL is the external URL reachable from this host, not an internal-only database URL. SQL: ${preview}`
+        );
       }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
     }

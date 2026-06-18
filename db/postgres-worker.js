@@ -17,7 +17,11 @@ const needsSsl =
 
 const pool = new Pool({
   connectionString: databaseUrl,
-  ssl: needsSsl ? { rejectUnauthorized: false } : undefined
+  ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
+  connectionTimeoutMillis: Number(process.env.POSTGRES_CONNECTION_TIMEOUT_MS || 10000),
+  idleTimeoutMillis: 10000,
+  query_timeout: Number(process.env.POSTGRES_QUERY_TIMEOUT_MS || 20000),
+  statement_timeout: Number(process.env.POSTGRES_STATEMENT_TIMEOUT_MS || 20000)
 });
 
 let txClient = null;
@@ -62,7 +66,18 @@ parentPort.on("message", async ({ requestPath, responsePath, signalPath }) => {
   let response;
   try {
     const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
-    response = { ok: true, result: await runQuery(request.sql, request.params) };
+    const timeoutMs = Number(process.env.POSTGRES_WORKER_TIMEOUT_MS || 25000);
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => {
+        const preview = String(request.sql || "").replace(/\s+/g, " ").trim().slice(0, 180);
+        reject(
+          new Error(
+            `Postgres query did not finish within ${timeoutMs}ms. Check DATABASE_URL, network access, SSL settings, and database availability. SQL: ${preview}`
+          )
+        );
+      }, timeoutMs);
+    });
+    response = { ok: true, result: await Promise.race([runQuery(request.sql, request.params), timeout]) };
   } catch (error) {
     response = {
       ok: false,
