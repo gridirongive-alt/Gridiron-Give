@@ -25,6 +25,24 @@ if (!databaseUrl) {
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
+function databaseConnectionSummary() {
+  try {
+    const parsed = new URL(databaseUrl);
+    const sslMode = parsed.searchParams.get("sslmode") || "not set";
+    const hostType = parsed.hostname.includes(".internal")
+      ? "render-internal"
+      : parsed.hostname.includes("render.com")
+        ? "render-external"
+        : "external";
+    return `host=${parsed.hostname} port=${parsed.port || "5432"} database=${parsed.pathname.replace(/^\//, "")} sslmode=${sslMode} type=${hostType}`;
+  } catch {
+    return "DATABASE_URL could not be parsed";
+  }
+}
+
+// eslint-disable-next-line no-console
+console.log(`[postgres] starting with ${databaseConnectionSummary()}`);
+
 function randomPart(length) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let out = "";
@@ -317,7 +335,7 @@ class PostgresSyncDatabase {
       if (Date.now() - started > timeoutMs) {
         const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
         throw new Error(
-          `Postgres query timed out after ${timeoutMs}ms. Check that DATABASE_URL is the external URL reachable from this host, not an internal-only database URL. SQL: ${preview}`
+          `Postgres query timed out after ${timeoutMs}ms. Check DATABASE_URL reachability from this host. On Render, use the internal Render database URL for a Render-hosted database in the same account/region; use the external URL only from tools like Postico. SQL: ${preview}`
         );
       }
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
