@@ -33,15 +33,10 @@ const welcomeTabBtn = document.getElementById("welcome-tab-btn");
 const donateTabBtn = document.getElementById("donate-tab-btn");
 const welcomeSection = document.getElementById("welcome-section");
 const donateSection = document.getElementById("donate-section");
-const slides = [
-  document.getElementById("slide-1"),
-  document.getElementById("slide-2"),
-  document.getElementById("slide-3"),
-  document.getElementById("slide-4"),
-].filter(Boolean);
-const slideDots = [...document.querySelectorAll(".landing-dot")];
-const prevSlideButton = document.getElementById("prev-slide");
-const nextSlideButton = document.getElementById("next-slide");
+const slides = [document.getElementById("slide-1")].filter(Boolean);
+const slideDots = [];
+const prevSlideButton = null;
+const nextSlideButton = null;
 const skipToDonateButton = document.getElementById("skip-to-donate");
 const preferBackendOnLocalhost =
   window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";

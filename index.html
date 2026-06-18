@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -51,7 +51,7 @@
             Start
           </button>
           <button class="btn btn-primary" type="button" data-open-modal="sign-in-modal" data-auth-guest>
-            Sign In
+            Sign In / Sign Up
           </button>
         </nav>
       </div>
@@ -63,57 +63,42 @@
           <div class="landing-card">
             <div class="landing-slide is-active" id="slide-1">
               <div class="landing-slide-media landing-media-1"></div>
-              <img class="landing-brand-mark" src="/assets/gridirongiveblack-removebg-preview.png" alt="" aria-hidden="true" />
               <div class="landing-slide-content">
-                <p class="landing-kicker">Welcome</p>
-                <h1 id="landing-title">Support Local Athletes With More Clarity</h1>
-                <p class="landing-copy">Search teams, follow real goals, and give where it matters most.</p>
-              </div>
-            </div>
-
-            <div class="landing-slide" id="slide-2" hidden>
-              <div class="landing-slide-media landing-media-2"></div>
-              <div class="landing-slide-content">
-                <p class="landing-kicker">For Donors</p>
-                <h2>See Who You’re Helping</h2>
-                <p class="landing-copy">Find a player or team page, review the goal, and donate with confidence.</p>
-              </div>
-            </div>
-
-            <div class="landing-slide" id="slide-3" hidden>
-              <div class="landing-slide-media landing-media-3"></div>
-              <div class="landing-slide-content">
-                <p class="landing-kicker">For Teams</p>
-                <h2>Built To Organize Fundraising</h2>
-                <p class="landing-copy">Managers can set up rosters, publish goals, and keep giving easy to follow.</p>
-              </div>
-            </div>
-
-            <div class="landing-slide" id="slide-4" hidden>
-              <div class="landing-slide-media landing-media-4"></div>
-              <div class="landing-slide-content">
-                <p class="landing-kicker">Get Started</p>
-                <h2>Ready To Explore?</h2>
-                <p class="landing-copy">Jump into the search view or open the setup flow for your team or player account.</p>
-              </div>
-            </div>
-
-            <div class="landing-controls">
-              <button id="prev-slide" class="btn btn-soft" type="button" disabled>Back</button>
-
-              <div class="landing-dots" id="slide-dots" aria-label="Landing slides">
-                <span class="landing-dot is-active"></span>
-                <span class="landing-dot"></span>
-                <span class="landing-dot"></span>
-                <span class="landing-dot"></span>
+                <p class="landing-kicker">Gridiron Give</p>
+                <h1 id="landing-title">Find the right fundraiser before you donate.</h1>
+                <p class="landing-copy">
+                  Search a player or team, review the listed goals, and use Stripe checkout when you are ready.
+                </p>
+                <div class="landing-action-row">
+                  <button id="skip-to-donate" class="btn btn-primary" type="button">Search Players & Teams</button>
+                  <button class="btn btn-ghost" type="button" data-open-modal="get-started-modal">Account Setup</button>
+                </div>
               </div>
 
-              <button id="next-slide" class="btn btn-primary" type="button">Next</button>
+              <aside class="landing-utility-panel" aria-label="How Gridiron Give works">
+                <div class="utility-panel-row">
+                  <span class="utility-step">1</span>
+                  <div>
+                    <strong>Search</strong>
+                    <p>Find the athlete or team page.</p>
+                  </div>
+                </div>
+                <div class="utility-panel-row">
+                  <span class="utility-step">2</span>
+                  <div>
+                    <strong>Review</strong>
+                    <p>Check goals, roster context, and donation options.</p>
+                  </div>
+                </div>
+                <div class="utility-panel-row">
+                  <span class="utility-step">3</span>
+                  <div>
+                    <strong>Donate</strong>
+                    <p>Complete checkout through Stripe.</p>
+                  </div>
+                </div>
+              </aside>
             </div>
-
-            <button id="skip-to-donate" class="landing-skip" type="button">
-              Continue to site
-            </button>
           </div>
         </div>
       </section>
@@ -122,19 +107,19 @@
         <div class="hero-grid">
           <div class="hero-content">
             <p class="eyebrow">Youth Sports Giving</p>
-            <h1 id="hero-title">Support Athlete Gear Goals</h1>
+            <h1 id="hero-title">Search. Choose. Support.</h1>
             <p class="hero-copy">
-              Find a player. Pick a need. Give directly.
+              Find verified team and athlete pages, then donate to gear, team costs, or a general goal.
             </p>
            
 
             <div class="trust-note-card">
               <p class="trust-note-title">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4169E1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                Operated Locally. Secured Globally.
+                Clear giving, secure checkout.
               </p>
               <p class="trust-note-copy">
-                Contributions are sent to team or player bank accounts through securely through Stripe. We structure donations to ensure processing fees are covered so the intended amount reaches the athlete.
+                Contributions are sent to team or player bank accounts securely through Stripe, and donation totals are structured so processing fees can be covered while the intended amount reaches the athlete.
               </p>
               <div class="trust-note-links">
                 <button class="inline-link" type="button" data-open-modal="how-it-works-modal">How it works</button>
@@ -144,7 +129,7 @@
           </div>
 
           <aside class="hero-search-card">
-            <p class="hero-card-kicker">Find A Player Or Team</p>
+            <p class="hero-card-kicker">Start Here</p>
 
             <form class="search-panel" action="#" method="get" novalidate>
               <div class="search-field">
