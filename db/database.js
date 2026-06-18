@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { Worker } from "node:worker_threads";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 
@@ -267,7 +267,7 @@ class PostgresStatement {
 
 class PostgresSyncDatabase {
   constructor() {
-    this.worker = new Worker(path.join(__dirname, "postgres-worker.js"));
+    this.runnerPath = path.join(__dirname, "postgres-runner.js");
     this.workDir = fs.mkdtempSync(path.join(os.tmpdir(), "gridiron-give-pg-"));
   }
 
@@ -290,13 +290,10 @@ class PostgresSyncDatabase {
 
   transaction(callback) {
     return (...args) => {
-      this.query("__BEGIN__", []);
       try {
         const result = callback(...args);
-        this.query("__COMMIT__", []);
         return result;
       } catch (error) {
-        this.query("__ROLLBACK__", []);
         throw error;
       }
     };
@@ -322,28 +319,30 @@ class PostgresSyncDatabase {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const requestPath = path.join(this.workDir, `${id}.request.json`);
     const responsePath = path.join(this.workDir, `${id}.response.json`);
-    const signalPath = path.join(this.workDir, `${id}.signal`);
     const request = {
-      sql: sql.startsWith("__") ? sql : transformSql(sql),
+      sql: transformSql(sql),
       params
     };
     fs.writeFileSync(requestPath, JSON.stringify(request));
-    this.worker.postMessage({ requestPath, responsePath, signalPath });
 
-    const started = Date.now();
-    const timeoutMs = Number(process.env.POSTGRES_PARENT_TIMEOUT_MS || 35000);
-    while (!fs.existsSync(signalPath)) {
-      if (Date.now() - started > timeoutMs) {
-        const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
-        throw new Error(
-          `Postgres query timed out after ${timeoutMs}ms. Check DATABASE_URL reachability from this host. On Render, use the internal Render database URL for a Render-hosted database in the same account/region; use the external URL only from tools like Postico. SQL: ${preview}`
-        );
-      }
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    const timeoutMs = Number(process.env.POSTGRES_PARENT_TIMEOUT_MS || 20000);
+    try {
+      execFileSync(process.execPath, [this.runnerPath, requestPath, responsePath], {
+        env: process.env,
+        stdio: ["ignore", "pipe", "pipe"],
+        timeout: timeoutMs
+      });
+    } catch (error) {
+      const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
+      const stderr = String(error?.stderr || "").trim();
+      const detail = stderr ? ` ${stderr}` : "";
+      throw new Error(
+        `Postgres query failed or timed out after ${timeoutMs}ms. Check DATABASE_URL, database status, and Render network access. SQL: ${preview}${detail}`
+      );
     }
 
     const response = JSON.parse(fs.readFileSync(responsePath, "utf8"));
-    [requestPath, responsePath, signalPath].forEach((filePath) => {
+    [requestPath, responsePath].forEach((filePath) => {
       try {
         fs.unlinkSync(filePath);
       } catch {
