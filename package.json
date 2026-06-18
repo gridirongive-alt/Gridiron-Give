@@ -9,9 +9,9 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.8.1",
     "express": "^4.21.2",
     "nodemailer": "^6.10.1",
+    "pg": "^8.21.0",
     "stripe": "^20.4.1"
   }
 }
