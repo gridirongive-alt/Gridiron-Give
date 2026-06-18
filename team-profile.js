@@ -113,6 +113,20 @@ async function apiRequest(path, options = {}) {
   return json;
 }
 
+function setDonationSubmitting(isSubmitting) {
+  if (!confirmDonationButton) return;
+  if (isSubmitting) {
+    confirmDonationButton.dataset.originalText = confirmDonationButton.textContent;
+    confirmDonationButton.textContent = "Opening secure checkout...";
+    confirmDonationButton.disabled = true;
+    confirmDonationButton.classList.add("is-loading");
+    return;
+  }
+  confirmDonationButton.textContent = confirmDonationButton.dataset.originalText || "Donate";
+  confirmDonationButton.disabled = false;
+  confirmDonationButton.classList.remove("is-loading");
+}
+
 function money(value) {
   return `$${Number(value || 0).toFixed(2)}`;
 }
@@ -380,6 +394,7 @@ donorModalBackdrop?.addEventListener("click", (event) => {
 donationForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    setDonationSubmitting(true);
     const formData = new FormData(donationForm);
     const donationAmount = Number(formData.get("amount"));
     const coverFees = Boolean(formData.get("coverFees"));
@@ -429,6 +444,8 @@ donationForm?.addEventListener("submit", async (event) => {
     window.location.assign(checkout.url);
   } catch (error) {
     showAction(error.message || "Could not start team donation.", true);
+  } finally {
+    setDonationSubmitting(false);
   }
 });
 

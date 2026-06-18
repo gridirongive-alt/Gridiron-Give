@@ -29,6 +29,7 @@ const featuredTeam = document.getElementById("featured-player-team");
 const featuredProgressFill = document.getElementById("featured-player-progress-fill");
 const featuredProgressCopy = document.getElementById("featured-player-progress-copy");
 const featuredLink = document.getElementById("featured-player-link");
+const fundraiserPreviewGrid = document.getElementById("fundraiser-preview-grid");
 const welcomeTabBtn = document.getElementById("welcome-tab-btn");
 const donateTabBtn = document.getElementById("donate-tab-btn");
 const welcomeSection = document.getElementById("welcome-section");
@@ -61,6 +62,20 @@ async function apiRequest(path, options = {}) {
     throw error;
   }
   return json;
+}
+
+function setButtonLoading(button, loading, loadingText = "Working...") {
+  if (!button) return;
+  if (loading) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = loadingText;
+    button.disabled = true;
+    button.classList.add("is-loading");
+    return;
+  }
+  button.textContent = button.dataset.originalText || button.textContent;
+  button.disabled = false;
+  button.classList.remove("is-loading");
 }
 
 function showFeedback(id, message, isError = false) {
@@ -179,38 +194,78 @@ function renderFeaturedPlayerCard(player) {
 
 async function loadFeaturedPlayer() {
   if (!featuredCard) return;
-  let players = [];
   try {
     const teams = await apiRequest(`/api/public/teams`);
-    const teamPayloads = await Promise.all(
-      teams.map((team) => apiRequest(`/api/public/teams/${encodeURIComponent(team.id)}`).catch(() => null))
-    );
-    teamPayloads.forEach((teamData) => {
-      if (!teamData?.team) return;
-      const sport = teamData?.team?.sport || "";
-      const teamName = teamData?.team?.name || "";
-      (teamData.players || []).forEach((p) => {
-        players.push({
-          name: `${p.first_name} ${p.last_name}`.trim(),
-          teamName,
-          sport,
-          playerPublicId: p.player_public_id,
-          raisedTotal: Number(p.raisedTotal || 0),
-          goalTotal: Number(p.goalTotal || 0),
-        });
-      });
-    });
+    const validTeams = teams.filter((team) => team?.id);
+    if (!validTeams.length) {
+      renderFeaturedPlayerCard(null);
+      return;
+    }
+    const team = validTeams[rotationIndex(validTeams.length)];
+    const teamData = await apiRequest(`/api/public/teams/${encodeURIComponent(team.id)}`);
+    const players = (teamData.players || [])
+      .filter((p) => p.player_public_id)
+      .map((p) => ({
+        name: `${p.first_name} ${p.last_name}`.trim(),
+        teamName: teamData?.team?.name || team.name || "",
+        sport: teamData?.team?.sport || team.sport || "",
+        playerPublicId: p.player_public_id,
+        raisedTotal: Number(p.raisedTotal || 0),
+        goalTotal: Number(p.goalTotal || 0)
+      }));
+    if (!players.length) {
+      renderFeaturedPlayerCard(null);
+      return;
+    }
+    renderFeaturedPlayerCard(players[rotationIndex(players.length)]);
   } catch {
-    players = [];
-  }
-
-  const valid = players.filter((p) => p.playerPublicId);
-  if (!valid.length) {
     renderFeaturedPlayerCard(null);
+  }
+}
+
+function renderFundraiserPreview(teams = []) {
+  if (!fundraiserPreviewGrid) return;
+  const safeTeams = teams.filter((team) => team?.id).slice(0, 3);
+  if (!safeTeams.length) {
+    fundraiserPreviewGrid.innerHTML = `
+      <article class="fundraiser-preview-card">
+        <strong>Start with search</strong>
+        <span>Find an athlete or team to see live fundraising goals.</span>
+      </article>
+    `;
     return;
   }
-  const pick = valid[rotationIndex(valid.length)];
-  renderFeaturedPlayerCard(pick);
+  fundraiserPreviewGrid.innerHTML = safeTeams
+    .map((team) => {
+      const meta = [team.sport, team.location].filter(Boolean).join(" • ") || "Team fundraiser";
+      const logo = team.logo_data_url
+        ? `<img src="${team.logo_data_url}" alt="" />`
+        : `<span>${String(team.name || "G").trim().charAt(0).toUpperCase()}</span>`;
+      return `
+        <a class="fundraiser-preview-card" href="/team-profile.html?teamId=${encodeURIComponent(team.id)}">
+          <span class="fundraiser-preview-logo">${logo}</span>
+          <strong>${team.name || "Team"}</strong>
+          <span>${meta}</span>
+        </a>
+      `;
+    })
+    .join("");
+}
+
+async function loadFundraiserPreview() {
+  if (!fundraiserPreviewGrid) return;
+  fundraiserPreviewGrid.innerHTML = `
+    <article class="fundraiser-preview-card is-skeleton">
+      <strong>Loading teams...</strong>
+      <span>Finding active fundraising pages.</span>
+    </article>
+  `;
+  try {
+    const teams = await apiRequest("/api/public/teams");
+    renderFundraiserPreview(teams);
+  } catch {
+    renderFundraiserPreview([]);
+  }
 }
 
 tabButtons.forEach((button) => {
@@ -387,14 +442,19 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
   const input = document.getElementById(inputId);
   const list = document.getElementById(listId);
   if (!input || !list) return;
+  let searchTimer = null;
+  let searchToken = 0;
 
-  input.addEventListener("input", async () => {
+  async function runSearch() {
+    const token = searchToken;
     const query = input.value.trim();
     list.innerHTML = "";
     if (!query) {
       list.hidden = true;
       return;
     }
+    list.innerHTML = '<li class="suggestion-item suggestion-loading">Searching...</li>';
+    list.hidden = false;
 
     let matches = [];
     try {
@@ -423,7 +483,12 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
       matches = preferBackendOnLocalhost ? [] : dataApi.findSearchResults(query, kind);
     }
 
-    matches = await enrichSearchMatches(matches);
+    if (token !== searchToken) return;
+    const needsEnrichment = matches.some(
+      (item) => item.teamId && (!item.logoDataUrl || !item.teamLocation || !item.teamSport)
+    );
+    if (needsEnrichment) matches = await enrichSearchMatches(matches);
+    if (token !== searchToken) return;
     const seen = new Set();
     matches = matches.filter((item) => {
       const key =
@@ -452,6 +517,18 @@ function setupAutocomplete(inputId, listId, kind, formatter, onSelect) {
       );
     });
     list.hidden = false;
+  }
+
+  input.addEventListener("input", () => {
+    searchToken += 1;
+    window.clearTimeout(searchTimer);
+    const query = input.value.trim();
+    if (!query) {
+      list.innerHTML = "";
+      list.hidden = true;
+      return;
+    }
+    searchTimer = window.setTimeout(runSearch, 180);
   });
 
   document.addEventListener("click", (event) => {
@@ -502,6 +579,7 @@ setupAutocomplete(
 const coachSignupForm = document.getElementById("coach-signup-form");
 coachSignupForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = coachSignupForm.querySelector('button[type="submit"]');
   const formData = new FormData(coachSignupForm);
   const password = String(formData.get("coachPassword") || "");
   const passwordConfirm = String(formData.get("coachPasswordConfirm") || "");
@@ -526,6 +604,7 @@ coachSignupForm?.addEventListener("submit", async (event) => {
     return;
   }
   try {
+    setButtonLoading(submitButton, true, "Creating team...");
     const created = await apiRequest("/api/coaches/signup", {
       method: "POST",
       body: JSON.stringify({
@@ -571,6 +650,8 @@ coachSignupForm?.addEventListener("submit", async (event) => {
     }
     showFeedback("coach-signup-feedback", error.message, true);
     showAction(error.message || "Could not create coach account.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
@@ -605,6 +686,7 @@ playerIdInput?.addEventListener("blur", fillPlayerEmailFromId);
 const playerSignupForm = document.getElementById("player-signup-form");
 playerSignupForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = playerSignupForm.querySelector('button[type="submit"]');
   const formData = new FormData(playerSignupForm);
   const password = String(formData.get("playerPassword") || "");
   const passwordConfirm = String(formData.get("playerPasswordConfirm") || "");
@@ -617,6 +699,7 @@ playerSignupForm?.addEventListener("submit", async (event) => {
     return;
   }
   try {
+    setButtonLoading(submitButton, true, "Creating account...");
     const created = await apiRequest("/api/players/signup", {
       method: "POST",
       body: JSON.stringify({
@@ -649,14 +732,18 @@ playerSignupForm?.addEventListener("submit", async (event) => {
     }
     showFeedback("player-signup-feedback", error.message, true);
     showAction(error.message || "Could not create player account.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
 const coachSigninForm = document.getElementById("coach-signin-form");
 coachSigninForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = coachSigninForm.querySelector('button[type="submit"]');
   const formData = new FormData(coachSigninForm);
   try {
+    setButtonLoading(submitButton, true, "Signing in...");
     const result = await apiRequest("/api/coaches/signin", {
       method: "POST",
       body: JSON.stringify({
@@ -682,14 +769,18 @@ coachSigninForm?.addEventListener("submit", async (event) => {
     }
     showFeedback("coach-signin-feedback", error.message || "Invalid coach credentials.", true);
     showAction(error.message || "Invalid coach credentials.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
 const playerSigninForm = document.getElementById("player-signin-form");
 playerSigninForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = playerSigninForm.querySelector('button[type="submit"]');
   const formData = new FormData(playerSigninForm);
   try {
+    setButtonLoading(submitButton, true, "Signing in...");
     const result = await apiRequest("/api/players/signin", {
       method: "POST",
       body: JSON.stringify({
@@ -717,6 +808,8 @@ playerSigninForm?.addEventListener("submit", async (event) => {
     }
     showFeedback("player-signin-feedback", error.message || "Invalid player credentials.", true);
     showAction(error.message || "Invalid player credentials.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
@@ -732,7 +825,9 @@ playerForgotPasswordButton?.addEventListener("click", () => openForgotPasswordMo
 
 forgotPasswordForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = forgotPasswordForm.querySelector('button[type="submit"]');
   try {
+    setButtonLoading(submitButton, true, "Sending...");
     await apiRequest("/api/auth/forgot-password", {
       method: "POST",
       body: JSON.stringify({
@@ -748,12 +843,16 @@ forgotPasswordForm?.addEventListener("submit", async (event) => {
   } catch (error) {
     showFeedback("forgot-password-feedback", error.message, true);
     showAction(error.message || "Could not send recovery email.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
 contactForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  const submitButton = contactForm.querySelector('button[type="submit"]');
   try {
+    setButtonLoading(submitButton, true, "Sending...");
     const formData = new FormData(contactForm);
     await apiRequest("/api/contact", {
       method: "POST",
@@ -769,10 +868,10 @@ contactForm?.addEventListener("submit", async (event) => {
   } catch (error) {
     showFeedback("contact-feedback", error.message || "Could not send message.", true);
     showAction(error.message || "Could not send message.", true);
+  } finally {
+    setButtonLoading(submitButton, false);
   }
 });
 
-if (featuredCard) {
-  loadFeaturedPlayer();
-  setInterval(loadFeaturedPlayer, 3 * 60 * 60 * 1000);
-}
+if (featuredCard) loadFeaturedPlayer();
+if (fundraiserPreviewGrid) loadFundraiserPreview();

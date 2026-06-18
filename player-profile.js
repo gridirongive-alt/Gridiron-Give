@@ -31,6 +31,9 @@ const donatePanel = document.getElementById("donate-panel");
 const donorModalBackdrop = document.getElementById("donor-modal-backdrop");
 const donationModal = document.getElementById("donation-modal");
 const donorModalCloseButtons = [...document.querySelectorAll("[data-donor-modal-close]")];
+const athleteStoryTitle = document.getElementById("athlete-story-title");
+const athleteStoryCopy = document.getElementById("athlete-story-copy");
+const recipientTrustCopy = document.getElementById("recipient-trust-copy");
 
 let mode = "local";
 let state = {
@@ -121,6 +124,20 @@ async function apiRequest(path, options = {}) {
   return json;
 }
 
+function setDonationSubmitting(isSubmitting) {
+  if (!confirmDonationButton) return;
+  if (isSubmitting) {
+    confirmDonationButton.dataset.originalText = confirmDonationButton.textContent;
+    confirmDonationButton.textContent = "Opening secure checkout...";
+    confirmDonationButton.disabled = true;
+    confirmDonationButton.classList.add("is-loading");
+    return;
+  }
+  confirmDonationButton.textContent = confirmDonationButton.dataset.originalText || "Donate";
+  confirmDonationButton.disabled = false;
+  confirmDonationButton.classList.remove("is-loading");
+}
+
 function openDonationModal() {
   if (!donorModalBackdrop || !donationModal) return;
   donorModalBackdrop.hidden = false;
@@ -174,6 +191,8 @@ async function loadPlayer() {
     state.team = {
       id: data.player.team_id,
       name: data.player.team_name || "",
+      sport: data.player.team_sport || "",
+      recipientMode: data.player.recipient_mode || "coach",
       logoDataUrl: data.player.team_logo_data_url || "",
       themeColor: data.player.team_theme_color || ""
     };
@@ -234,6 +253,23 @@ function renderProfileInfo() {
   } else {
     playerImage.hidden = true;
     if (playerPlaceholder) playerPlaceholder.hidden = false;
+  }
+}
+
+function renderAthleteStory() {
+  const current = currentPlayer();
+  if (!current) return;
+  const name = `${current.firstName || ""} ${current.lastName || ""}`.trim() || "this athlete";
+  const teamName = state.team?.name || current.teamName || "their team";
+  const sport = state.team?.sport ? `${state.team.sport} ` : "";
+  const recipientMode = String(state.team?.recipientMode || current.recipient_mode || "coach");
+  if (athleteStoryTitle) athleteStoryTitle.textContent = `Help ${name} stay equipped`;
+  if (athleteStoryCopy) {
+    athleteStoryCopy.textContent = `${name} is raising support with ${teamName}. Your donation helps cover ${sport}equipment and season costs so the focus can stay on competing, improving, and showing up prepared.`;
+  }
+  if (recipientTrustCopy) {
+    recipientTrustCopy.textContent =
+      recipientMode === "coach" ? "Donations Delivered To Coach" : "Donations Delivered To Athlete";
   }
 }
 
@@ -523,6 +559,8 @@ async function refreshAfterDonation() {
     state.team = {
       id: data.player.team_id,
       name: data.player.team_name || "",
+      sport: data.player.team_sport || "",
+      recipientMode: data.player.recipient_mode || "coach",
       logoDataUrl: data.player.team_logo_data_url || "",
       themeColor: data.player.team_theme_color || ""
     };
@@ -572,6 +610,7 @@ coverFeesCheckbox?.addEventListener("change", updateDonationButtonText);
 donationForm?.addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
+    setDonationSubmitting(true);
     const formData = new FormData(donationForm);
     const donation = await submitDonation(formData);
     if (donation?.externalCheckout && donation.redirectUrl) {
@@ -597,10 +636,13 @@ donationForm?.addEventListener("submit", async (event) => {
     renderGeneralDonationCard();
     renderEquipment();
     renderProfileInfo();
+    renderAthleteStory();
   } catch (error) {
     donationFeedback.textContent = error.message || "Could not process donation.";
     donationFeedback.classList.add("is-error");
     showAction(error.message || "Could not process donation.", true);
+  } finally {
+    setDonationSubmitting(false);
   }
 });
 
@@ -629,6 +671,7 @@ document.addEventListener("keydown", (event) => {
     await loadPlayer();
     renderTop();
     renderProfileInfo();
+    renderAthleteStory();
     renderGeneralDonationCard();
     renderEquipment();
     if (checkoutStatus === "success") {

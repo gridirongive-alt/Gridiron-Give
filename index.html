@@ -64,13 +64,18 @@
             <div class="landing-slide is-active" id="slide-1">
               <div class="landing-slide-media landing-media-1"></div>
               <div class="landing-slide-content">
-                <p class="landing-kicker">Gridiron Give</p>
-                <h1 id="landing-title">Find the right fundraiser before you donate.</h1>
+                <p class="landing-kicker">Verified Youth Sports Fundraising</p>
+                <h1 id="landing-title">Help young athletes get the gear they need.</h1>
                 <p class="landing-copy">
-                  Search a player or team, review the listed goals, and use Stripe checkout when you are ready.
+                  Support players and teams by funding helmets, uniforms, league fees, facilities, and more.
                 </p>
+                <div class="landing-proof-row" aria-label="Gridiron Give trust highlights">
+                  <div><strong>Stripe</strong><span>secure checkout</span></div>
+                  <div><strong>95%</strong><span>intended delivery target</span></div>
+                  <div><strong>Team</strong><span>verified pages</span></div>
+                </div>
                 <div class="landing-action-row">
-                  <button id="skip-to-donate" class="btn btn-primary" type="button">Search Players & Teams</button>
+                  <button id="skip-to-donate" class="btn btn-primary" type="button">Find an Athlete</button>
                   <button class="btn btn-ghost" type="button" data-open-modal="get-started-modal">Account Setup</button>
                 </div>
               </div>
@@ -86,15 +91,15 @@
                 <div class="utility-panel-row">
                   <span class="utility-step">2</span>
                   <div>
-                    <strong>Review</strong>
-                    <p>Check goals, roster context, and donation options.</p>
+                    <strong>Understand</strong>
+                    <p>See what each athlete or team is raising for.</p>
                   </div>
                 </div>
                 <div class="utility-panel-row">
                   <span class="utility-step">3</span>
                   <div>
                     <strong>Donate</strong>
-                    <p>Complete checkout through Stripe.</p>
+                    <p>Use Stripe checkout and receive confirmation.</p>
                   </div>
                 </div>
               </aside>
@@ -106,10 +111,10 @@
       <section id="donate-section" class="hero" aria-labelledby="hero-title" hidden>
         <div class="hero-grid">
           <div class="hero-content">
-            <p class="eyebrow">Youth Sports Giving</p>
-            <h1 id="hero-title">Search. Choose. Support.</h1>
+            <p class="eyebrow">Find A Fundraiser</p>
+            <h1 id="hero-title">Donate in under 30 seconds.</h1>
             <p class="hero-copy">
-              Find verified team and athlete pages, then donate to gear, team costs, or a general goal.
+              Search by athlete or team, review the goal, and choose exactly where your gift goes.
             </p>
            
 
@@ -157,6 +162,12 @@
               </div>
             </form>
 
+            <div class="search-trust-strip" aria-label="Donation trust signals">
+              <span>Verified Team Pages</span>
+              <span>Secure Stripe Payments</span>
+              <span>Transparent Goals</span>
+            </div>
+
             <section class="featured-player-card section-top-gap-sm" id="featured-player-card" hidden>
               <p class="eyebrow">Featured Player</p>
               <h2 id="featured-player-name">Player Name</h2>
@@ -167,6 +178,8 @@
               <p class="subtle-copy section-top-gap-sm" id="featured-player-progress-copy">0% of goal reached</p>
               <a class="btn btn-money section-top-gap-sm" id="featured-player-link" href="/index.html">View Profile</a>
             </section>
+
+            <section class="fundraiser-preview-grid section-top-gap-sm" id="fundraiser-preview-grid" aria-label="Active fundraising examples"></section>
           </aside>
         </div>
 
