@@ -1,18 +1,29 @@
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import Database from "better-sqlite3";
+import { Worker } from "node:worker_threads";
+import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const rootDir = process.cwd();
-const dataDir = process.env.DATA_DIR
-  ? path.resolve(process.env.DATA_DIR)
-  : path.join(rootDir, "data");
-const dbPath = path.join(dataDir, "gridiron-give.sqlite");
+const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : path.join(rootDir, "data");
 const backupDir = path.join(dataDir, "backups");
 const latestJsonBackupPath = path.join(backupDir, "gridiron-give-backup-latest.json");
 const latestExcelBackupPath = path.join(backupDir, "gridiron-give-backup-latest.xls");
-const schemaPath = path.join(rootDir, "db", "schema.sql");
+const schemaPath = path.join(__dirname, "schema.sql");
+const databaseUrl = String(process.env.DATABASE_URL || "").trim();
+
+if (!databaseUrl) {
+  throw new Error(
+    "DATABASE_URL is required. Gridiron Give now uses Postgres only; SQLite fallback is disabled."
+  );
+}
+
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
 
 function randomPart(length) {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -135,96 +146,236 @@ function equipmentTemplateForSport(sport) {
   return items[sport] || items.football;
 }
 
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+const numericColumns = new Set([
+  "count",
+  "goal",
+  "raised",
+  "amount",
+  "checkout_total_amount",
+  "application_fee_amount",
+  "enabled",
+  "registered",
+  "published",
+  "sort_order",
+  "stripe_onboarding_complete",
+  "goal_total",
+  "raised_total"
+]);
 
-export const db = new Database(dbPath);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
-db.exec(fs.readFileSync(schemaPath, "utf8"));
+function normalizeRows(rows) {
+  return (rows || []).map((row) => {
+    const next = {};
+    Object.entries(row).forEach(([key, value]) => {
+      if (value === null || value === undefined) {
+        next[key] = value;
+        return;
+      }
+      if (numericColumns.has(key) && typeof value === "string" && value.trim() !== "" && !Number.isNaN(Number(value))) {
+        next[key] = Number(value);
+        return;
+      }
+      next[key] = value;
+    });
+    return next;
+  });
+}
+
+function replaceQuestionPlaceholders(sql) {
+  let index = 0;
+  let output = "";
+  let single = false;
+  let double = false;
+  for (let i = 0; i < sql.length; i += 1) {
+    const char = sql[i];
+    const prev = sql[i - 1];
+    if (char === "'" && single && sql[i + 1] === "'") {
+      output += "''";
+      i += 1;
+      continue;
+    }
+    if (char === "'" && !double && prev !== "\\") single = !single;
+    if (char === '"' && !single && prev !== "\\") double = !double;
+    if (char === "?" && !single && !double) {
+      index += 1;
+      output += `$${index}`;
+      continue;
+    }
+    output += char;
+  }
+  return output;
+}
+
+function parsePragmaTableInfo(sql) {
+  const match = String(sql || "").trim().match(/^PRAGMA\s+table_info\(([^)]+)\)/i);
+  if (!match) return null;
+  return match[1].replace(/["'`]/g, "").trim();
+}
+
+function transformSql(sql) {
+  return replaceQuestionPlaceholders(
+    String(sql || "")
+      .replace(/ORDER BY rowid DESC/gi, "ORDER BY id DESC")
+      .replace(/ORDER BY rowid ASC/gi, "ORDER BY id ASC")
+      .replace(/,\s*rowid\s+ASC/gi, ", id ASC")
+      .replace(/,\s*rowid\s+DESC/gi, ", id DESC")
+  );
+}
+
+class PostgresStatement {
+  constructor(database, sql) {
+    this.database = database;
+    this.sql = sql;
+    this.tableInfoName = parsePragmaTableInfo(sql);
+  }
+
+  all(...params) {
+    if (this.tableInfoName) return this.database.tableInfo(this.tableInfoName);
+    return this.database.query(this.sql, params).rows;
+  }
+
+  get(...params) {
+    return this.all(...params)[0];
+  }
+
+  run(...params) {
+    const result = this.database.query(this.sql, params);
+    return {
+      changes: result.rowCount,
+      lastInsertRowid: 0
+    };
+  }
+}
+
+class PostgresSyncDatabase {
+  constructor() {
+    this.worker = new Worker(path.join(__dirname, "postgres-worker.js"));
+    this.workDir = fs.mkdtempSync(path.join(os.tmpdir(), "gridiron-give-pg-"));
+  }
+
+  prepare(sql) {
+    return new PostgresStatement(this, sql);
+  }
+
+  exec(sql) {
+    const statements = String(sql || "")
+      .split(";")
+      .map((statement) => statement.trim())
+      .filter(Boolean)
+      .filter((statement) => !/^PRAGMA\b/i.test(statement));
+    statements.forEach((statement) => this.query(statement, []));
+  }
+
+  pragma() {
+    return undefined;
+  }
+
+  transaction(callback) {
+    return (...args) => {
+      this.query("__BEGIN__", []);
+      try {
+        const result = callback(...args);
+        this.query("__COMMIT__", []);
+        return result;
+      } catch (error) {
+        this.query("__ROLLBACK__", []);
+        throw error;
+      }
+    };
+  }
+
+  tableInfo(tableName) {
+    return this.query(
+      `SELECT
+         ordinal_position - 1 AS cid,
+         column_name AS name,
+         data_type AS type,
+         CASE WHEN is_nullable = 'NO' THEN 1 ELSE 0 END AS notnull,
+         column_default AS dflt_value,
+         CASE WHEN column_name = 'id' OR column_name = 'session_id' THEN 1 ELSE 0 END AS pk
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = ?
+       ORDER BY ordinal_position`,
+      [tableName]
+    ).rows;
+  }
+
+  query(sql, params) {
+    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const requestPath = path.join(this.workDir, `${id}.request.json`);
+    const responsePath = path.join(this.workDir, `${id}.response.json`);
+    const signalPath = path.join(this.workDir, `${id}.signal`);
+    const request = {
+      sql: sql.startsWith("__") ? sql : transformSql(sql),
+      params
+    };
+    fs.writeFileSync(requestPath, JSON.stringify(request));
+    this.worker.postMessage({ requestPath, responsePath, signalPath });
+
+    const started = Date.now();
+    while (!fs.existsSync(signalPath)) {
+      if (Date.now() - started > 30000) {
+        throw new Error("Postgres query timed out after 30 seconds.");
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 25);
+    }
+
+    const response = JSON.parse(fs.readFileSync(responsePath, "utf8"));
+    [requestPath, responsePath, signalPath].forEach((filePath) => {
+      try {
+        fs.unlinkSync(filePath);
+      } catch {
+        // Ignore cleanup races during process shutdown.
+      }
+    });
+    if (!response.ok) {
+      const detail = response.error?.detail ? ` ${response.error.detail}` : "";
+      throw new Error(`${response.error?.message || "Postgres query failed."}${detail}`);
+    }
+    return {
+      rows: normalizeRows(response.result.rows),
+      rowCount: Number(response.result.rowCount || 0)
+    };
+  }
+}
+
+export const db = new PostgresSyncDatabase();
+
+function ensureSchema() {
+  db.exec(fs.readFileSync(schemaPath, "utf8"));
+}
 
 function hasColumn(tableName, columnName) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
-  return columns.some((col) => String(col.name) === columnName);
+  return db.prepare(`PRAGMA table_info(${tableName})`).all().some((col) => String(col.name) === columnName);
+}
+
+function ensureColumn(tableName, columnName, definition) {
+  if (!hasColumn(tableName, columnName)) {
+    db.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${definition}`).run();
+  }
 }
 
 function ensureColumns() {
-  if (!hasColumn("coaches", "PW_Recovery_Key")) {
-    db.prepare('ALTER TABLE coaches ADD COLUMN "PW_Recovery_Key" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("players", "PW_Recovery_Key")) {
-    db.prepare('ALTER TABLE players ADD COLUMN "PW_Recovery_Key" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("coaches", "team_name")) {
-    db.prepare('ALTER TABLE coaches ADD COLUMN "team_name" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("coaches", "stripe_account_id")) {
-    db.prepare('ALTER TABLE coaches ADD COLUMN "stripe_account_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("coaches", "stripe_onboarding_complete")) {
-    db.prepare('ALTER TABLE coaches ADD COLUMN "stripe_onboarding_complete" INTEGER NOT NULL DEFAULT 0').run();
-  }
-  if (!hasColumn("teams", "recipient_mode")) {
-    db.prepare('ALTER TABLE teams ADD COLUMN "recipient_mode" TEXT NOT NULL DEFAULT "coach"').run();
-  }
-  if (!hasColumn("teams", "logo_data_url")) {
-    db.prepare('ALTER TABLE teams ADD COLUMN "logo_data_url" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("teams", "theme_color")) {
-    db.prepare('ALTER TABLE teams ADD COLUMN "theme_color" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("players", "team_name")) {
-    db.prepare('ALTER TABLE players ADD COLUMN "team_name" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("players", "stripe_account_id")) {
-    db.prepare('ALTER TABLE players ADD COLUMN "stripe_account_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("players", "stripe_onboarding_complete")) {
-    db.prepare('ALTER TABLE players ADD COLUMN "stripe_onboarding_complete" INTEGER NOT NULL DEFAULT 0').run();
-  }
-  if (!hasColumn("donations", "stripe_checkout_session_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "stripe_checkout_session_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("donations", "stripe_payment_intent_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "stripe_payment_intent_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("donations", "stripe_charge_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "stripe_charge_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("donations", "checkout_total_amount")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "checkout_total_amount" REAL NOT NULL DEFAULT 0').run();
-  }
-  if (!hasColumn("donations", "application_fee_amount")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "application_fee_amount" REAL NOT NULL DEFAULT 0').run();
-  }
-  if (!hasColumn("donations", "team_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "team_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("donations", "payout_recipient_type")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "payout_recipient_type" TEXT NOT NULL DEFAULT "player"').run();
-  }
-  if (!hasColumn("donations", "payout_recipient_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "payout_recipient_id" TEXT NOT NULL DEFAULT ""').run();
-  }
-  if (!hasColumn("donations", "stripe_destination_account_id")) {
-    db.prepare('ALTER TABLE donations ADD COLUMN "stripe_destination_account_id" TEXT NOT NULL DEFAULT ""').run();
-  }
+  ensureColumn("coaches", "PW_Recovery_Key", '"PW_Recovery_Key" TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn("coaches", "team_name", "team_name TEXT NOT NULL DEFAULT ''");
+  ensureColumn("coaches", "stripe_account_id", "stripe_account_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("coaches", "stripe_onboarding_complete", "stripe_onboarding_complete INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("teams", "recipient_mode", "recipient_mode TEXT NOT NULL DEFAULT 'coach'");
+  ensureColumn("teams", "logo_data_url", "logo_data_url TEXT NOT NULL DEFAULT ''");
+  ensureColumn("teams", "theme_color", "theme_color TEXT NOT NULL DEFAULT ''");
+  ensureColumn("players", "PW_Recovery_Key", '"PW_Recovery_Key" TEXT NOT NULL DEFAULT \'\'');
+  ensureColumn("players", "team_name", "team_name TEXT NOT NULL DEFAULT ''");
+  ensureColumn("players", "stripe_account_id", "stripe_account_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("players", "stripe_onboarding_complete", "stripe_onboarding_complete INTEGER NOT NULL DEFAULT 0");
+  ensureColumn("donations", "stripe_checkout_session_id", "stripe_checkout_session_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("donations", "stripe_payment_intent_id", "stripe_payment_intent_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("donations", "stripe_charge_id", "stripe_charge_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("donations", "checkout_total_amount", "checkout_total_amount DOUBLE PRECISION NOT NULL DEFAULT 0");
+  ensureColumn("donations", "application_fee_amount", "application_fee_amount DOUBLE PRECISION NOT NULL DEFAULT 0");
+  ensureColumn("donations", "team_id", "team_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("donations", "payout_recipient_type", "payout_recipient_type TEXT NOT NULL DEFAULT 'player'");
+  ensureColumn("donations", "payout_recipient_id", "payout_recipient_id TEXT NOT NULL DEFAULT ''");
+  ensureColumn("donations", "stripe_destination_account_id", "stripe_destination_account_id TEXT NOT NULL DEFAULT ''");
 }
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS team_equipment_templates (
-    id TEXT PRIMARY KEY,
-    team_id TEXT NOT NULL,
-    name TEXT NOT NULL,
-    category TEXT NOT NULL DEFAULT 'General',
-    price_range TEXT NOT NULL DEFAULT '',
-    goal REAL NOT NULL DEFAULT 0,
-    enabled INTEGER NOT NULL DEFAULT 1,
-    sort_order INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (team_id) REFERENCES teams(id) ON DELETE CASCADE
-  );
-  CREATE INDEX IF NOT EXISTS idx_team_equipment_team_id ON team_equipment_templates(team_id);
-`);
 
 function migratePasswordsAndRecoveryKeys() {
   const coaches = db.prepare('SELECT id, password, "PW_Recovery_Key" AS recovery_key FROM coaches').all();
@@ -272,6 +423,7 @@ function migratePasswordsAndRecoveryKeys() {
   ).run();
 }
 
+ensureSchema();
 ensureColumns();
 migratePasswordsAndRecoveryKeys();
 
@@ -287,20 +439,20 @@ function escapeXml(value) {
 function buildBackupSnapshot() {
   return {
     generated_at: new Date().toISOString(),
-    source_db_path: dbPath,
+    source_db: "postgres",
     tables: {
-      coaches: db.prepare("SELECT * FROM coaches ORDER BY created_at ASC, rowid ASC").all(),
-      teams: db.prepare("SELECT * FROM teams ORDER BY created_at ASC, rowid ASC").all(),
-      players: db.prepare("SELECT * FROM players ORDER BY created_at ASC, rowid ASC").all(),
+      coaches: db.prepare("SELECT * FROM coaches ORDER BY created_at ASC, id ASC").all(),
+      teams: db.prepare("SELECT * FROM teams ORDER BY created_at ASC, id ASC").all(),
+      players: db.prepare("SELECT * FROM players ORDER BY created_at ASC, id ASC").all(),
       team_equipment_templates: db
-        .prepare("SELECT * FROM team_equipment_templates ORDER BY team_id ASC, sort_order ASC, rowid ASC")
+        .prepare("SELECT * FROM team_equipment_templates ORDER BY team_id ASC, sort_order ASC, id ASC")
         .all(),
       equipment_items: db
-        .prepare("SELECT * FROM equipment_items ORDER BY player_id ASC, sort_order ASC, rowid ASC")
+        .prepare("SELECT * FROM equipment_items ORDER BY player_id ASC, sort_order ASC, id ASC")
         .all(),
-      donations: db.prepare("SELECT * FROM donations ORDER BY created_at ASC, rowid ASC").all(),
+      donations: db.prepare("SELECT * FROM donations ORDER BY created_at ASC, id ASC").all(),
       processed_checkout_sessions: db
-        .prepare("SELECT * FROM processed_checkout_sessions ORDER BY processed_at ASC, rowid ASC")
+        .prepare("SELECT * FROM processed_checkout_sessions ORDER BY processed_at ASC, session_id ASC")
         .all()
     }
   };
