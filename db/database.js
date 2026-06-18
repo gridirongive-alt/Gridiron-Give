@@ -29,11 +29,12 @@ function databaseConnectionSummary() {
   try {
     const parsed = new URL(databaseUrl);
     const sslMode = parsed.searchParams.get("sslmode") || "not set";
-    const hostType = parsed.hostname.includes(".internal")
-      ? "render-internal"
-      : parsed.hostname.includes("render.com")
-        ? "render-external"
-        : "external";
+    const hostType =
+      /^dpg-[a-z0-9-]+$/i.test(parsed.hostname) || parsed.hostname.includes(".internal")
+        ? "render-internal"
+        : parsed.hostname.includes("render.com")
+          ? "render-external"
+          : "external";
     return `host=${parsed.hostname} port=${parsed.port || "5432"} database=${parsed.pathname.replace(/^\//, "")} sslmode=${sslMode} type=${hostType}`;
   } catch {
     return "DATABASE_URL could not be parsed";
@@ -362,6 +363,14 @@ class PostgresSyncDatabase {
 
 export const db = new PostgresSyncDatabase();
 
+function verifyConnection() {
+  // eslint-disable-next-line no-console
+  console.log("[postgres] verifying connection with SELECT 1");
+  db.prepare("SELECT 1 AS ok").get();
+  // eslint-disable-next-line no-console
+  console.log("[postgres] connection verified");
+}
+
 function ensureSchema() {
   db.exec(fs.readFileSync(schemaPath, "utf8"));
 }
@@ -445,6 +454,7 @@ function migratePasswordsAndRecoveryKeys() {
   ).run();
 }
 
+verifyConnection();
 ensureSchema();
 ensureColumns();
 migratePasswordsAndRecoveryKeys();

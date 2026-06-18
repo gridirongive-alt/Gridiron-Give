@@ -15,6 +15,24 @@ const needsSsl =
   String(process.env.PGSSLMODE || "").toLowerCase() === "require" ||
   String(process.env.POSTGRES_SSL || "").toLowerCase() === "true";
 
+function connectionSummary() {
+  try {
+    const parsed = new URL(databaseUrl);
+    const hostType =
+      /^dpg-[a-z0-9-]+$/i.test(parsed.hostname) || parsed.hostname.includes(".internal")
+        ? "render-internal"
+        : parsed.hostname.includes("render.com")
+          ? "render-external"
+          : "external";
+    return `host=${parsed.hostname} port=${parsed.port || "5432"} database=${parsed.pathname.replace(/^\//, "")} ssl=${needsSsl ? "on" : "off"} type=${hostType}`;
+  } catch {
+    return "DATABASE_URL could not be parsed";
+  }
+}
+
+// eslint-disable-next-line no-console
+console.log(`[postgres-worker] ready ${connectionSummary()}`);
+
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
@@ -29,6 +47,9 @@ let txDepth = 0;
 
 async function runQuery(sql, params) {
   const normalized = String(sql || "").trim();
+  const preview = normalized.replace(/\s+/g, " ").slice(0, 140);
+  // eslint-disable-next-line no-console
+  console.log(`[postgres-worker] query start: ${preview}`);
   if (normalized === "__BEGIN__") {
     if (txDepth === 0) {
       txClient = await pool.connect();
@@ -59,6 +80,8 @@ async function runQuery(sql, params) {
   }
   const client = txClient || pool;
   const result = await client.query(normalized, params || []);
+  // eslint-disable-next-line no-console
+  console.log(`[postgres-worker] query ok: ${preview}`);
   return { rows: result.rows || [], rowCount: result.rowCount || 0 };
 }
 
@@ -79,6 +102,12 @@ parentPort.on("message", async ({ requestPath, responsePath, signalPath }) => {
     });
     response = { ok: true, result: await Promise.race([runQuery(request.sql, request.params), timeout]) };
   } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[postgres-worker] query failed", {
+      message: error?.message || "Postgres query failed.",
+      code: error?.code || "",
+      detail: error?.detail || ""
+    });
     response = {
       ok: false,
       error: {
