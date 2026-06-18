@@ -328,7 +328,12 @@ class PostgresSyncDatabase {
     const timeoutMs = Number(process.env.POSTGRES_PARENT_TIMEOUT_MS || 20000);
     try {
       execFileSync(process.execPath, [this.runnerPath, requestPath, responsePath], {
-        env: process.env,
+        cwd: rootDir,
+        env: {
+          ...process.env,
+          GRIDIRON_GIVE_ROOT_DIR: rootDir,
+          NODE_PATH: path.join(rootDir, "node_modules")
+        },
         stdio: ["ignore", "pipe", "pipe"],
         timeout: timeoutMs
       });

@@ -1,6 +1,10 @@
 import fs from "node:fs";
-import pg from "pg";
+import path from "node:path";
+import { createRequire } from "node:module";
 
+const rootDir = process.env.GRIDIRON_GIVE_ROOT_DIR || process.cwd();
+const require = createRequire(path.join(rootDir, "server.js"));
+const pg = require("pg");
 const { Client, types } = pg;
 
 types.setTypeParser(1082, (value) => value);
