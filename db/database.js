@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import { execFileSync } from "node:child_process";
+import { Worker } from "node:worker_threads";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
 
@@ -267,7 +267,13 @@ class PostgresStatement {
 
 class PostgresSyncDatabase {
   constructor() {
-    this.runnerPath = path.join(__dirname, "postgres-runner.js");
+    this.worker = new Worker(path.join(__dirname, "postgres-worker.js"), {
+      env: {
+        ...process.env,
+        GRIDIRON_GIVE_ROOT_DIR: rootDir,
+        NODE_PATH: path.join(rootDir, "node_modules")
+      }
+    });
     this.workDir = fs.mkdtempSync(path.join(os.tmpdir(), "gridiron-give-pg-"));
   }
 
@@ -290,10 +296,13 @@ class PostgresSyncDatabase {
 
   transaction(callback) {
     return (...args) => {
+      this.query("__BEGIN__", []);
       try {
         const result = callback(...args);
+        this.query("__COMMIT__", []);
         return result;
       } catch (error) {
+        this.query("__ROLLBACK__", []);
         throw error;
       }
     };
@@ -319,35 +328,28 @@ class PostgresSyncDatabase {
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const requestPath = path.join(this.workDir, `${id}.request.json`);
     const responsePath = path.join(this.workDir, `${id}.response.json`);
+    const signalPath = path.join(this.workDir, `${id}.signal`);
     const request = {
-      sql: transformSql(sql),
+      sql: sql.startsWith("__") ? sql : transformSql(sql),
       params
     };
     fs.writeFileSync(requestPath, JSON.stringify(request));
+    this.worker.postMessage({ requestPath, responsePath, signalPath });
 
+    const started = Date.now();
     const timeoutMs = Number(process.env.POSTGRES_PARENT_TIMEOUT_MS || 20000);
-    try {
-      execFileSync(process.execPath, [this.runnerPath, requestPath, responsePath], {
-        cwd: rootDir,
-        env: {
-          ...process.env,
-          GRIDIRON_GIVE_ROOT_DIR: rootDir,
-          NODE_PATH: path.join(rootDir, "node_modules")
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-        timeout: timeoutMs
-      });
-    } catch (error) {
-      const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
-      const stderr = String(error?.stderr || "").trim();
-      const detail = stderr ? ` ${stderr}` : "";
-      throw new Error(
-        `Postgres query failed or timed out after ${timeoutMs}ms. Check DATABASE_URL, database status, and Render network access. SQL: ${preview}${detail}`
-      );
+    while (!fs.existsSync(signalPath)) {
+      if (Date.now() - started > timeoutMs) {
+        const preview = request.sql.replace(/\s+/g, " ").trim().slice(0, 180);
+        throw new Error(
+          `Postgres query timed out after ${timeoutMs}ms. Check DATABASE_URL, database status, and Render network access. SQL: ${preview}`
+        );
+      }
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 20);
     }
 
     const response = JSON.parse(fs.readFileSync(responsePath, "utf8"));
-    [requestPath, responsePath].forEach((filePath) => {
+    [requestPath, responsePath, signalPath].forEach((filePath) => {
       try {
         fs.unlinkSync(filePath);
       } catch {

@@ -1,10 +1,13 @@
 import fs from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
 import { parentPort } from "node:worker_threads";
-import pg from "pg";
 
+const rootDir = process.env.GRIDIRON_GIVE_ROOT_DIR || process.cwd();
+const require = createRequire(path.join(rootDir, "server.js"));
+const pg = require("pg");
 const { Pool, types } = pg;
 
-// Keep timestamp values stable for existing JSON/API responses.
 types.setTypeParser(1082, (value) => value);
 types.setTypeParser(1114, (value) => value);
 types.setTypeParser(1184, (value) => value);
@@ -15,31 +18,13 @@ const needsSsl =
   String(process.env.PGSSLMODE || "").toLowerCase() === "require" ||
   String(process.env.POSTGRES_SSL || "").toLowerCase() === "true";
 
-function connectionSummary() {
-  try {
-    const parsed = new URL(databaseUrl);
-    const hostType =
-      /^dpg-[a-z0-9-]+$/i.test(parsed.hostname) || parsed.hostname.includes(".internal")
-        ? "render-internal"
-        : parsed.hostname.includes("render.com")
-          ? "render-external"
-          : "external";
-    return `host=${parsed.hostname} port=${parsed.port || "5432"} database=${parsed.pathname.replace(/^\//, "")} ssl=${needsSsl ? "on" : "off"} type=${hostType}`;
-  } catch {
-    return "DATABASE_URL could not be parsed";
-  }
-}
-
-// eslint-disable-next-line no-console
-console.log(`[postgres-worker] ready ${connectionSummary()}`);
-
 const pool = new Pool({
   connectionString: databaseUrl,
   ssl: needsSsl ? { rejectUnauthorized: false } : undefined,
-  connectionTimeoutMillis: Number(process.env.POSTGRES_CONNECTION_TIMEOUT_MS || 10000),
+  connectionTimeoutMillis: Number(process.env.POSTGRES_CONNECTION_TIMEOUT_MS || 8000),
   idleTimeoutMillis: 10000,
-  query_timeout: Number(process.env.POSTGRES_QUERY_TIMEOUT_MS || 20000),
-  statement_timeout: Number(process.env.POSTGRES_STATEMENT_TIMEOUT_MS || 20000)
+  query_timeout: Number(process.env.POSTGRES_QUERY_TIMEOUT_MS || 12000),
+  statement_timeout: Number(process.env.POSTGRES_STATEMENT_TIMEOUT_MS || 12000)
 });
 
 let txClient = null;
@@ -47,9 +32,6 @@ let txDepth = 0;
 
 async function runQuery(sql, params) {
   const normalized = String(sql || "").trim();
-  const preview = normalized.replace(/\s+/g, " ").slice(0, 140);
-  // eslint-disable-next-line no-console
-  console.log(`[postgres-worker] query start: ${preview}`);
   if (normalized === "__BEGIN__") {
     if (txDepth === 0) {
       txClient = await pool.connect();
@@ -80,44 +62,27 @@ async function runQuery(sql, params) {
   }
   const client = txClient || pool;
   const result = await client.query(normalized, params || []);
-  // eslint-disable-next-line no-console
-  console.log(`[postgres-worker] query ok: ${preview}`);
   return { rows: result.rows || [], rowCount: result.rowCount || 0 };
 }
 
+function writeResponse(responsePath, signalPath, response) {
+  fs.writeFileSync(responsePath, JSON.stringify(response));
+  fs.writeFileSync(signalPath, "done");
+}
+
 parentPort.on("message", async ({ requestPath, responsePath, signalPath }) => {
-  let response;
   try {
     const request = JSON.parse(fs.readFileSync(requestPath, "utf8"));
-    const timeoutMs = Number(process.env.POSTGRES_WORKER_TIMEOUT_MS || 25000);
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => {
-        const preview = String(request.sql || "").replace(/\s+/g, " ").trim().slice(0, 180);
-        reject(
-          new Error(
-            `Postgres query did not finish within ${timeoutMs}ms. Check DATABASE_URL, network access, SSL settings, and database availability. SQL: ${preview}`
-          )
-        );
-      }, timeoutMs);
-    });
-    response = { ok: true, result: await Promise.race([runQuery(request.sql, request.params), timeout]) };
+    const result = await runQuery(request.sql, request.params);
+    writeResponse(responsePath, signalPath, { ok: true, result });
   } catch (error) {
-    // eslint-disable-next-line no-console
-    console.error("[postgres-worker] query failed", {
-      message: error?.message || "Postgres query failed.",
-      code: error?.code || "",
-      detail: error?.detail || ""
-    });
-    response = {
+    writeResponse(responsePath, signalPath, {
       ok: false,
       error: {
         message: error?.message || "Postgres query failed.",
         code: error?.code || "",
         detail: error?.detail || ""
       }
-    };
+    });
   }
-
-  fs.writeFileSync(responsePath, JSON.stringify(response));
-  fs.writeFileSync(signalPath, "done");
 });
