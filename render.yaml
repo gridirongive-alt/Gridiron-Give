@@ -15,21 +15,15 @@ services:
         value: production
       - key: DATA_DIR
         value: /var/data
+      - key: DATABASE_URL
+        sync: false
       - key: APP_BASE_URL
         sync: false
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD
         sync: false
-      - key: ADMIN_ENABLED
-        value: "true"
-      - key: ADMIN_FULL_USERNAME
-        value: AdminUser
-      - key: ADMIN_FULL_PASSWORD
+      - key: STRIPE_SECRET_KEY
         sync: false
-      - key: ADMIN_READONLY_USERNAME
-        value: DBmanageruser
-      - key: ADMIN_READONLY_PASSWORD
-        sync: false
-      - key: ADMIN_SESSION_SECRET
+      - key: STRIPE_WEBHOOK_SECRET
         sync: false
